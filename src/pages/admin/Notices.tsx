@@ -3,7 +3,7 @@ import AdminLayout from '../../components/layout/AdminLayout';
 import Card from '../../components/ui/Card';
 import { notices as initialNotices } from '../../data/mockData';
 import type { Notice } from '../../data/mockData';
-import { Plus, Pencil, Trash2, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 type FormMode = 'add' | 'edit';
 
@@ -14,6 +14,16 @@ export default function Notices() {
   const [editId, setEditId] = useState<string | null>(null);
   const [titleInput, setTitleInput] = useState('');
   const [contentInput, setContentInput] = useState('');
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const openAdd = () => {
     setFormMode('add');
@@ -133,17 +143,31 @@ export default function Notices() {
       {/* ── 공지 목록 ── */}
       {noticeList.length > 0 ? (
         <div className="space-y-3">
-          {noticeList.map((notice) => (
+          {noticeList.map((notice) => {
+            const expanded = expandedIds.has(notice.id);
+            return (
             <Card key={notice.id}>
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium text-gray-800 truncate">{notice.title}</p>
+                    <p className="font-medium text-gray-800">{notice.title}</p>
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {notice.date} · {notice.author}
                   </p>
-                  <p className="text-sm text-gray-500 mt-2 line-clamp-2">{notice.content}</p>
+                  <p className={`text-sm text-gray-500 mt-2 whitespace-pre-wrap ${expanded ? '' : 'line-clamp-2'}`}>
+                    {notice.content}
+                  </p>
+                  <button
+                    onClick={() => toggleExpand(notice.id)}
+                    className="flex items-center gap-1 mt-1.5 text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
+                  >
+                    {expanded ? (
+                      <><ChevronUp className="w-3.5 h-3.5" />접기</>
+                    ) : (
+                      <><ChevronDown className="w-3.5 h-3.5" />더보기</>
+                    )}
+                  </button>
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <button
@@ -163,7 +187,8 @@ export default function Notices() {
                 </div>
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-16">

@@ -32,25 +32,25 @@ export default function Dashboard() {
 
       {/* ── 팀별 제출 현황 ── */}
       <Card title="팀별 제출 현황" className="mb-6">
-        <div className="space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {teams.map((team) => {
             const submitted = team.submitStatus === 'submitted';
             return (
-              <div key={team.id}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm font-medium text-gray-800 truncate">{team.name}</span>
-                    <span className="text-xs text-gray-400 shrink-0">팀원 {team.members.length}명</span>
-                  </div>
-                  <Badge status={team.submitStatus} />
+              <div
+                key={team.id}
+                className={`rounded-xl border p-4 flex items-center justify-between gap-3 transition-colors ${
+                  submitted
+                    ? 'bg-indigo-50 border-indigo-200'
+                    : 'bg-gray-50 border-gray-200'
+                }`}
+              >
+                <div className="min-w-0">
+                  <p className={`text-sm font-semibold truncate ${submitted ? 'text-indigo-800' : 'text-gray-700'}`}>
+                    {team.name}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">팀원 {team.members.length}명</p>
                 </div>
-                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-700 ${
-                      submitted ? 'w-full bg-indigo-500' : 'w-0'
-                    }`}
-                  />
-                </div>
+                <Badge status={team.submitStatus} />
               </div>
             );
           })}

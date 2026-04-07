@@ -17,8 +17,7 @@ function Home() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
       <div className="bg-white rounded-xl shadow p-10 text-center max-w-md w-full">
-        <h1 className="text-4xl font-bold text-indigo-600 mb-2">Hackathon Dashboard</h1>
-        <p className="text-gray-500 mb-8">React + TypeScript + Vite + Tailwind CSS</p>
+        <h1 className="text-4xl font-bold text-indigo-600 mb-8">Hackathon Dashboard</h1>
         <div className="flex gap-4 justify-center">
           <Link
             to="/admin"

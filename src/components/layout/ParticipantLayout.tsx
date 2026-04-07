@@ -38,7 +38,7 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
         {/* 로고 + 사용자 정보 */}
         <div className="px-5 py-5 border-b border-gray-100">
           <Link to="/participant" className="text-base font-bold text-indigo-600 tracking-tight">
-            해커톤 2025
+            해커톤 2026
           </Link>
           <p className="mt-2 text-xs text-gray-500 font-medium">{CURRENT_USER.team}</p>
           <p className="text-xs text-gray-400">{CURRENT_USER.name}</p>
@@ -85,7 +85,7 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
             to="/participant"
             className="lg:hidden text-sm font-bold text-indigo-600 tracking-tight"
           >
-            해커톤 2025
+            해커톤 2026
           </Link>
 
           {/* 팀명 + 이름 (데스크탑) */}

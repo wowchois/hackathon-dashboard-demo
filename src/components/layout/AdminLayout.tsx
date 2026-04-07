@@ -133,7 +133,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 function Logo() {
   return (
     <Link to="/admin" className="text-base font-bold text-indigo-600 tracking-tight">
-      해커톤 2025
+      해커톤 2026
     </Link>
   );
 }
