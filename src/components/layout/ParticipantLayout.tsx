@@ -7,7 +7,7 @@ import { notifications } from '../../data/mockData';
 const UNREAD_COUNT = notifications.filter((n) => !n.isRead).length;
 
 // 임시 참가자 정보 (실제 앱에선 인증 컨텍스트에서 가져옴)
-const CURRENT_USER = { name: '김민준', team: 'Team Alpha' };
+const CURRENT_USER = { name: '김민준', team: '1조' };
 
 const NAV_ITEMS = [
   { path: '/participant',              label: '내 팀',    icon: Users },

@@ -81,7 +81,7 @@ export const participants: Participant[] = [
 export const teams: Team[] = [
   {
     id: 't1',
-    name: 'Team Alpha',
+    name: '1조',
     members: ['p01', 'p02', 'p03', 'p04'],
     idea: 'AI 기반 실시간 재난 대응 플랫폼 — 시민 제보와 공공 데이터를 결합해 재난 상황을 빠르게 파악하고 대응 자원을 자동 배치합니다.',
     submitStatus: 'submitted',
@@ -89,7 +89,7 @@ export const teams: Team[] = [
   },
   {
     id: 't2',
-    name: 'Team Beta',
+    name: '2조',
     members: ['p05', 'p06', 'p07', 'p08'],
     idea: '탄소 발자국 트래커 앱 — 일상 소비 패턴을 분석해 개인 탄소 배출량을 시각화하고 친환경 대안을 추천합니다.',
     submitStatus: 'submitted',
@@ -97,7 +97,7 @@ export const teams: Team[] = [
   },
   {
     id: 't3',
-    name: 'Team Gamma',
+    name: '3조',
     members: ['p09', 'p10', 'p11'],
     idea: '지역 소상공인 연결 마켓플레이스 — 동네 가게와 주민을 잇는 하이퍼로컬 커머스 플랫폼입니다.',
     submitStatus: 'submitted',
@@ -105,7 +105,7 @@ export const teams: Team[] = [
   },
   {
     id: 't4',
-    name: 'Team Delta',
+    name: '4조',
     members: ['p12', 'p13', 'p14', 'p15'],
     idea: '시니어를 위한 디지털 문해력 코칭 서비스 — AI 튜터가 맞춤형 강의와 1:1 과제 피드백을 제공합니다.',
     submitStatus: 'not-submitted',
