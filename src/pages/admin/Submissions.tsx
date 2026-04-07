@@ -1,7 +1,7 @@
 import AdminLayout from '../../components/layout/AdminLayout';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
-import { teams } from '../../data/mockData';
+import { useTeams } from '../../hooks/useTeams';
 import { FileCheck, ExternalLink, Clock, AlertCircle } from 'lucide-react';
 
 interface SubmissionDetail {
@@ -29,6 +29,7 @@ const SUBMISSION_DETAILS: Record<string, SubmissionDetail> = {
 };
 
 export default function Submissions() {
+  const teams = useTeams();
   const submittedCount = teams.filter((t) => t.submitStatus === 'submitted').length;
   const total = teams.length;
 
@@ -72,7 +73,7 @@ export default function Submissions() {
               submittedCount === total ? 'text-green-600' : 'text-indigo-600'
             }`}
           >
-            {Math.round((submittedCount / total) * 100)}%
+            {total > 0 ? Math.round((submittedCount / total) * 100) : 0}%
           </p>
           <p className="text-xs text-gray-400">완료율</p>
         </div>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/layout/AdminLayout';
 import Card from '../../components/ui/Card';
-import { teams } from '../../data/mockData';
+import { useTeams } from '../../hooks/useTeams';
 import { getScores, updateScore, SCORE_CRITERIA } from '../../data/scoreStore';
 import { useScores } from '../../hooks/useScores';
 import { ArrowLeft, Save, CheckCircle2 } from 'lucide-react';
@@ -19,6 +19,7 @@ function buildDraft(scores: ReturnType<typeof getScores>): DraftScores {
 }
 
 export default function ScoreInput() {
+  const teams = useTeams();
   const scores = useScores();
   const [draft, setDraft] = useState<DraftScores>(() => buildDraft(getScores()));
   const [saved, setSaved] = useState<Set<string>>(new Set());
@@ -30,29 +31,33 @@ export default function ScoreInput() {
   ) => {
     const max = SCORE_CRITERIA.find((c) => c.key === field)!.max;
     const val = Math.min(max, Math.max(0, Number(raw) || 0));
-    setDraft((prev) => ({ ...prev, [teamId]: { ...prev[teamId], [field]: val } }));
+    setDraft((prev) => ({ ...prev, [teamId]: { ...(prev[teamId] ?? { creativity: 0, completion: 0, presentation: 0 }), [field]: val } }));
     setSaved((prev) => { const next = new Set(prev); next.delete(teamId); return next; });
   };
 
   const handleSave = (teamId: string) => {
-    updateScore(teamId, draft[teamId]);
+    const d = draft[teamId] ?? { creativity: 0, completion: 0, presentation: 0 };
+    updateScore(teamId, d);
     setSaved((prev) => new Set(prev).add(teamId));
   };
 
   const handleSaveAll = () => {
-    teams.forEach((t) => updateScore(t.id, draft[t.id]));
+    teams.forEach((t) => {
+      const d = draft[t.id] ?? { creativity: 0, completion: 0, presentation: 0 };
+      updateScore(t.id, d);
+    });
     setSaved(new Set(teams.map((t) => t.id)));
   };
 
   const getTotal = (teamId: string) => {
-    const d = draft[teamId];
+    const d = draft[teamId] ?? { creativity: 0, completion: 0, presentation: 0 };
     return d.creativity + d.completion + d.presentation;
   };
 
   const isChanged = (teamId: string) => {
     const original = scores.find((s) => s.teamId === teamId);
-    if (!original) return false;
-    const d = draft[teamId];
+    if (!original) return true;
+    const d = draft[teamId] ?? { creativity: 0, completion: 0, presentation: 0 };
     return (
       d.creativity !== original.creativity ||
       d.completion !== original.completion ||
@@ -77,7 +82,7 @@ export default function ScoreInput() {
         </div>
         <button
           onClick={handleSaveAll}
-          className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 bg-[#80766b] text-white text-sm font-medium rounded-lg hover:bg-[#6e645a] transition-colors"
         >
           <Save className="w-4 h-4" />
           전체 저장
@@ -114,7 +119,7 @@ export default function ScoreInput() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {teams.map((team) => {
-                  const d = draft[team.id];
+                  const d = draft[team.id] ?? { creativity: 0, completion: 0, presentation: 0 };
                   const total = getTotal(team.id);
                   const isSaved = saved.has(team.id);
                   const changed = isChanged(team.id);
@@ -130,7 +135,7 @@ export default function ScoreInput() {
                             max={c.max}
                             value={d[c.key]}
                             onChange={(e) => setField(team.id, c.key, e.target.value)}
-                            className="w-20 px-2 py-1.5 text-center text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                            className="w-20 px-2 py-1.5 text-center text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30"
                           />
                         </td>
                       ))}
@@ -151,7 +156,7 @@ export default function ScoreInput() {
                           <button
                             onClick={() => handleSave(team.id)}
                             disabled={!changed}
-                            className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            className="px-3 py-1.5 text-xs font-medium bg-[#80766b] text-white rounded-lg hover:bg-[#6e645a] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                           >
                             저장
                           </button>
@@ -169,7 +174,7 @@ export default function ScoreInput() {
       {/* ── 모바일 카드 입력 ── */}
       <div className="sm:hidden space-y-4">
         {teams.map((team) => {
-          const d = draft[team.id];
+          const d = draft[team.id] ?? { creativity: 0, completion: 0, presentation: 0 };
           const total = getTotal(team.id);
           const isSaved = saved.has(team.id);
           const changed = isChanged(team.id);
@@ -197,11 +202,11 @@ export default function ScoreInput() {
                         max={c.max}
                         value={d[c.key]}
                         onChange={(e) => setField(team.id, c.key, e.target.value)}
-                        className="w-20 px-3 py-2 text-center text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                        className="w-20 px-3 py-2 text-center text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30"
                       />
                       <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-indigo-400 rounded-full transition-all"
+                          className="h-full bg-[#80766b] rounded-full transition-all"
                           style={{ width: `${Math.min((d[c.key] / c.max) * 100, 100)}%` }}
                         />
                       </div>
@@ -221,7 +226,7 @@ export default function ScoreInput() {
                   <button
                     onClick={() => handleSave(team.id)}
                     disabled={!changed}
-                    className="w-full py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="w-full py-2 text-sm font-medium bg-[#80766b] text-white rounded-lg hover:bg-[#6e645a] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     저장하기
                   </button>

@@ -1,22 +1,38 @@
 import ParticipantLayout from '../../components/layout/ParticipantLayout';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
-import { participants, teams } from '../../data/mockData';
+import { useTeams } from '../../hooks/useTeams';
+import { useParticipants } from '../../hooks/useParticipants';
 import { CheckCircle2, Clock } from 'lucide-react';
 
-const MY_TEAM = teams.find((t) => t.id === 't1')!;
-const MY_MEMBERS = participants.filter((p) => MY_TEAM.members.includes(p.id));
+const MY_TEAM_ID = 't1';
 
 function Initials({ name }: { name: string }) {
   return (
-    <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm shrink-0">
+    <div className="w-9 h-9 rounded-full bg-[#80766b]/10 flex items-center justify-center text-[#80766b] font-bold text-sm shrink-0">
       {name.slice(0, 1)}
     </div>
   );
 }
 
 export default function ParticipantDashboard() {
-  const submitted = MY_TEAM.submitStatus === 'submitted';
+  const teams = useTeams();
+  const participants = useParticipants();
+
+  const myTeam = teams.find((t) => t.id === MY_TEAM_ID);
+  const myMembers = myTeam
+    ? participants.filter((p) => myTeam.members.includes(p.id))
+    : [];
+
+  if (!myTeam) {
+    return (
+      <ParticipantLayout>
+        <p className="text-sm text-gray-400 text-center py-10">팀 정보를 불러올 수 없습니다.</p>
+      </ParticipantLayout>
+    );
+  }
+
+  const submitted = myTeam.submitStatus === 'submitted';
 
   return (
     <ParticipantLayout>
@@ -24,17 +40,17 @@ export default function ParticipantDashboard() {
       <Card className="mb-5">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-800">{MY_TEAM.name}</h1>
-            <p className="text-sm text-gray-400 mt-0.5">팀원 {MY_TEAM.members.length}명</p>
+            <h1 className="text-xl font-bold text-gray-800">{myTeam.name}</h1>
+            <p className="text-sm text-gray-400 mt-0.5">팀원 {myTeam.members.length}명</p>
           </div>
-          <Badge status={MY_TEAM.submitStatus} />
+          <Badge status={myTeam.submitStatus} />
         </div>
       </Card>
 
       {/* ── 팀원 목록 ── */}
       <Card title="팀원 목록" className="mb-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {MY_MEMBERS.map((member) => (
+          {myMembers.map((member) => (
             <div
               key={member.id}
               className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"
@@ -52,7 +68,7 @@ export default function ParticipantDashboard() {
 
       {/* ── 팀 아이디어 ── */}
       <Card title="팀 아이디어" className="mb-5">
-        <p className="text-sm text-gray-600 leading-relaxed">{MY_TEAM.idea}</p>
+        <p className="text-sm text-gray-600 leading-relaxed">{myTeam.idea}</p>
       </Card>
 
       {/* ── 제출 현황 요약 ── */}

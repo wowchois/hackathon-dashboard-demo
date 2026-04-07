@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/layout/AdminLayout';
 import Card from '../../components/ui/Card';
-import { teams } from '../../data/mockData';
+import { useTeams } from '../../hooks/useTeams';
 import { SCORE_CRITERIA } from '../../data/scoreStore';
 import { useScores } from '../../hooks/useScores';
 import { Trophy, Pencil } from 'lucide-react';
@@ -9,6 +9,7 @@ import { Trophy, Pencil } from 'lucide-react';
 const MAX_SCORE = 100;
 
 export default function Scoring() {
+  const teams = useTeams();
   const scores = useScores();
 
   const ranked = [...scores]
@@ -16,8 +17,9 @@ export default function Scoring() {
     .map((s, idx) => ({
       ...s,
       rank: s.total > 0 ? idx + 1 : null,
-      team: teams.find((t) => t.id === s.teamId)!,
-    }));
+      team: teams.find((t) => t.id === s.teamId),
+    }))
+    .filter((row) => row.team !== undefined);
 
   return (
     <AdminLayout>
@@ -26,7 +28,7 @@ export default function Scoring() {
         <div /> {/* spacer */}
         <Link
           to="/admin/score-input"
-          className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 bg-[#80766b] text-white text-sm font-medium rounded-lg hover:bg-[#6e645a] transition-colors"
         >
           <Pencil className="w-4 h-4" />
           점수 입력
@@ -37,8 +39,8 @@ export default function Scoring() {
       <div className="grid grid-cols-3 gap-3 mb-6">
         {SCORE_CRITERIA.map((c) => {
           const colorMap = {
-            creativity:   { text: 'text-purple-600', bg: 'bg-purple-50' },
-            completion:   { text: 'text-blue-600',   bg: 'bg-blue-50' },
+            creativity:   { text: 'text-[#fcaf17]',  bg: 'bg-[#fcaf17]/10' },
+            completion:   { text: 'text-[#80766b]',  bg: 'bg-[#80766b]/10' },
             presentation: { text: 'text-green-600',  bg: 'bg-green-50' },
           } as const;
           const color = colorMap[c.key];
@@ -59,13 +61,13 @@ export default function Scoring() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 text-xs text-gray-400 font-medium uppercase tracking-wide">
-                  <th className="pb-3 pr-4 text-left w-14">순위</th>
-                  <th className="pb-3 pr-4 text-left">팀명</th>
+                <tr className="border-b border-gray-100 text-xs font-medium uppercase tracking-wide">
+                  <th className="pb-3 pr-4 text-left text-gray-400 w-14">순위</th>
+                  <th className="pb-3 pr-4 text-left text-gray-400">팀명</th>
                   {SCORE_CRITERIA.map((c) => (
                     <th key={c.key} className={`pb-3 pr-4 text-right ${
-                      c.key === 'creativity' ? 'text-purple-500' :
-                      c.key === 'completion' ? 'text-blue-500' : 'text-green-500'
+                      c.key === 'creativity' ? 'text-[#fcaf17]' :
+                      c.key === 'completion' ? 'text-[#80766b]' : 'text-green-500'
                     }`}>
                       {c.label}
                     </th>
@@ -90,11 +92,11 @@ export default function Scoring() {
                           <span className="text-gray-300">-</span>
                         )}
                       </td>
-                      <td className="py-3.5 pr-4 font-medium text-gray-800">{row.team.name}</td>
-                      <td className="py-3.5 pr-4 text-right text-purple-600 font-medium">
+                      <td className="py-3.5 pr-4 font-medium text-gray-800">{row.team!.name}</td>
+                      <td className="py-3.5 pr-4 text-right text-[#fcaf17] font-medium">
                         {row.creativity || <span className="text-gray-300">-</span>}
                       </td>
-                      <td className="py-3.5 pr-4 text-right text-blue-600 font-medium">
+                      <td className="py-3.5 pr-4 text-right text-[#80766b] font-medium">
                         {row.completion || <span className="text-gray-300">-</span>}
                       </td>
                       <td className="py-3.5 pr-4 text-right text-green-600 font-medium">
@@ -128,7 +130,7 @@ export default function Scoring() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   {isFirst && <Trophy className="w-4 h-4 text-yellow-500" />}
-                  <span className="font-semibold text-gray-800">{row.team.name}</span>
+                  <span className="font-semibold text-gray-800">{row.team!.name}</span>
                   {row.rank && !isFirst && (
                     <span className="text-xs text-gray-400">{row.rank}위</span>
                   )}
@@ -141,12 +143,12 @@ export default function Scoring() {
               </div>
               {row.total > 0 ? (
                 <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-purple-50 rounded-lg py-2">
-                    <p className="text-purple-600 font-bold text-lg">{row.creativity}</p>
+                  <div className="bg-[#fcaf17]/10 rounded-lg py-2">
+                    <p className="text-[#fcaf17] font-bold text-lg">{row.creativity}</p>
                     <p className="text-gray-400 text-xs mt-0.5">창의성</p>
                   </div>
-                  <div className="bg-blue-50 rounded-lg py-2">
-                    <p className="text-blue-600 font-bold text-lg">{row.completion}</p>
+                  <div className="bg-[#80766b]/10 rounded-lg py-2">
+                    <p className="text-[#80766b] font-bold text-lg">{row.completion}</p>
                     <p className="text-gray-400 text-xs mt-0.5">완성도</p>
                   </div>
                   <div className="bg-green-50 rounded-lg py-2">
@@ -173,7 +175,7 @@ export default function Scoring() {
                 <div className="flex items-center justify-between mb-1.5 text-sm">
                   <div className="flex items-center gap-1.5">
                     {isFirst && <Trophy className="w-3.5 h-3.5 text-yellow-500" />}
-                    <span className="font-medium text-gray-700">{row.team.name}</span>
+                    <span className="font-medium text-gray-700">{row.team!.name}</span>
                   </div>
                   <span className="text-gray-400 text-xs">
                     {row.total > 0 ? `${row.total} / ${MAX_SCORE}점` : '미입력'}
@@ -182,7 +184,7 @@ export default function Scoring() {
                 <div className="h-7 bg-gray-100 rounded-lg overflow-hidden">
                   <div
                     className={`h-full rounded-lg flex items-center justify-end pr-2.5 text-xs font-semibold text-white transition-all duration-700 ${
-                      isFirst ? 'bg-yellow-400' : 'bg-indigo-400'
+                      isFirst ? 'bg-yellow-400' : 'bg-[#80766b]'
                     }`}
                     style={{ width: `${pct}%` }}
                   >

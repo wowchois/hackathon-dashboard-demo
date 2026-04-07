@@ -37,7 +37,7 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
       <aside className="hidden lg:flex flex-col fixed inset-y-0 left-0 w-60 bg-white border-r border-gray-100 z-30">
         {/* 로고 + 사용자 정보 */}
         <div className="px-5 py-5 border-b border-gray-100">
-          <Link to="/participant" className="text-base font-bold text-indigo-600 tracking-tight">
+          <Link to="/participant" className="text-base font-bold text-[#80766b] tracking-tight">
             해커톤 2026
           </Link>
           <p className="mt-2 text-xs text-gray-500 font-medium">{CURRENT_USER.team}</p>
@@ -57,12 +57,12 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                       ${
                         active
-                          ? 'bg-indigo-50 text-indigo-700'
+                          ? 'bg-[#80766b]/10 text-[#80766b]'
                           : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                       }`}
                   >
                     <Icon
-                      className={`w-4 h-4 shrink-0 ${active ? 'text-indigo-600' : 'text-gray-400'}`}
+                      className={`w-4 h-4 shrink-0 ${active ? 'text-[#80766b]' : 'text-gray-400'}`}
                     />
                     <span className="flex-1">{label}</span>
                     {showBadge && (
@@ -83,7 +83,7 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
           {/* 로고 (모바일) */}
           <Link
             to="/participant"
-            className="lg:hidden text-sm font-bold text-indigo-600 tracking-tight"
+            className="lg:hidden text-sm font-bold text-[#80766b] tracking-tight"
           >
             해커톤 2026
           </Link>
@@ -108,8 +108,8 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
               )}
             </Link>
 
-            {/* 데스크탑: 팀 상태 뱃지 */}
-            <span className="hidden lg:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 ring-1 ring-green-200">
+            {/* 데스크탑: 참가자 상태 뱃지 */}
+            <span className="hidden lg:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#80766b]/10 text-[#80766b] ring-1 ring-[#80766b]/20">
               참가자
             </span>
           </div>
@@ -131,10 +131,10 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
                   <Link
                     to={path}
                     className={`relative flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors
-                      ${active ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                      ${active ? 'text-[#fcaf17]' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     <span className="relative">
-                      <Icon className={`w-5 h-5 ${active ? 'text-indigo-600' : ''}`} />
+                      <Icon className={`w-5 h-5 ${active ? 'text-[#fcaf17]' : ''}`} />
                       {showBadge && (
                         <span className="absolute -top-1 -right-1.5 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold bg-red-500 text-white rounded-full">
                           {UNREAD_COUNT > 9 ? '9+' : UNREAD_COUNT}

@@ -2,10 +2,17 @@ import AdminLayout from '../../components/layout/AdminLayout';
 import StatCard from '../../components/ui/StatCard';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
-import { participants, teams, notices, scores } from '../../data/mockData';
+import { notices } from '../../data/mockData';
+import { useTeams } from '../../hooks/useTeams';
+import { useParticipants } from '../../hooks/useParticipants';
+import { useScores } from '../../hooks/useScores';
 import { Users, Flag, FileCheck, Trophy } from 'lucide-react';
 
 export default function Dashboard() {
+  const teams = useTeams();
+  const participants = useParticipants();
+  const scores = useScores();
+
   const submittedCount = teams.filter((t) => t.submitStatus === 'submitted').length;
   const scoredCount = scores.filter((s) => s.total > 0).length;
   const recentNotices = [...notices].reverse().slice(0, 3);

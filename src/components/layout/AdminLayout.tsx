@@ -92,7 +92,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </span>
 
           <div className="ml-auto flex items-center gap-2">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#80766b]/10 text-[#80766b] ring-1 ring-[#80766b]/20">
               관리자
             </span>
           </div>
@@ -113,9 +113,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <Link
                     to={path}
                     className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors
-                      ${active ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                      ${active ? 'text-[#fcaf17]' : 'text-gray-400 hover:text-gray-600'}`}
                   >
-                    <Icon className={`w-5 h-5 ${active ? 'text-indigo-600' : ''}`} />
+                    <Icon className={`w-5 h-5 ${active ? 'text-[#fcaf17]' : ''}`} />
                     <span>{label}</span>
                   </Link>
                 </li>
@@ -132,7 +132,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
 function Logo() {
   return (
-    <Link to="/admin" className="text-base font-bold text-indigo-600 tracking-tight">
+    <Link to="/admin" className="text-base font-bold text-[#80766b] tracking-tight">
       해커톤 2026
     </Link>
   );
@@ -170,11 +170,13 @@ function SidebarNav({
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                   ${
                     active
-                      ? 'bg-indigo-50 text-indigo-700'
+                      ? 'bg-[#80766b]/10 text-[#80766b]'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />
+                <Icon
+                  className={`w-4 h-4 shrink-0 ${active ? 'text-[#80766b]' : 'text-gray-400'}`}
+                />
                 {label}
               </Link>
             </li>
