@@ -27,8 +27,8 @@ export default function Participants() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<FormState>>({});
 
-  const participantById = (id: string) => list.find((p) => p.id === id);
   const teamName = (teamId: string) => teams.find((t) => t.id === teamId)?.name ?? '-';
+  const teamMembers = (teamId: string) => list.filter((p) => p.team === teamId);
 
   const filtered = list.filter((p) => {
     const q = search.trim().toLowerCase();
@@ -215,7 +215,7 @@ export default function Participants() {
         /* ── 팀 카드 그리드 ── */
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {teams.map((team) => {
-            const members = team.members.map((id) => participantById(id)).filter(Boolean);
+            const members = teamMembers(team.id);
             return (
               <Card key={team.id}>
                 <div className="flex items-start justify-between mb-3">
