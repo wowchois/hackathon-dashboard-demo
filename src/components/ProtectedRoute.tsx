@@ -29,7 +29,7 @@ export default function ProtectedRoute({
     // 역할별 홈으로 리다이렉트
     const home =
       user.role === 'admin' ? '/admin' :
-      user.role === 'judge' ? '/admin/score-input' :
+      user.role === 'judge' ? '/admin/scores' :
       '/participant';
     return <Navigate to={home} replace />;
   }

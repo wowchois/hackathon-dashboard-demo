@@ -16,7 +16,7 @@ export default function Login() {
   if (user) {
     const dest =
       user.role === 'admin' ? '/admin' :
-      user.role === 'judge' ? '/admin/score-input' :
+      user.role === 'judge' ? '/admin/scores' :
       '/participant';
     return <Navigate to={dest} replace />;
   }

@@ -32,7 +32,7 @@ export default function ParticipantDashboard() {
   if (!team) {
     return (
       <ParticipantLayout>
-        <p className="text-sm text-gray-400 text-center py-10">팀 정보를 불러올 수 없습니다.</p>
+        <p className="text-sm text-gray-400 text-center py-10">아직 지정된 팀이 없습니다.</p>
       </ParticipantLayout>
     );
   }

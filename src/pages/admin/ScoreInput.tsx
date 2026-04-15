@@ -25,7 +25,8 @@ function buildDraft(scores: JudgeScore[]): DraftScores {
 }
 
 export default function ScoreInput() {
-  const teams = useTeams();
+  const allTeams = useTeams();
+  const teams = allTeams.filter((t) => t.submitStatus === 'submitted');
   const { user } = useAuth();
 
   // 로그인된 사용자를 심사위원으로 사용
@@ -136,10 +137,17 @@ export default function ScoreInput() {
       </div>
 
       {/* ── 심사위원 정보 ── */}
-      <div className="mb-6 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center gap-2 text-sm text-gray-600">
+      <div className="mb-4 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center gap-2 text-sm text-gray-600">
         <span className="font-medium text-gray-800">{judgeName}</span>
         <span className="text-gray-400">심사위원으로 입력 중</span>
       </div>
+
+      {/* ── 제출 팀 안내 ── */}
+      {allTeams.length > teams.length && (
+        <div className="mb-6 px-4 py-3 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
+          미제출 팀 {allTeams.length - teams.length}개는 심사 대상에서 제외됩니다.
+        </div>
+      )}
 
       {/* ── 평가 기준 안내 ── */}
       <div className="grid grid-cols-3 gap-2 mb-6">

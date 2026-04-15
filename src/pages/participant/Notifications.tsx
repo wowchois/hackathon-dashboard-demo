@@ -3,7 +3,7 @@ import { useNotifications } from '../../hooks/useNotifications';
 import { Bell, CheckCheck } from 'lucide-react';
 
 export default function Notifications() {
-  const { list, markRead, markAllRead } = useNotifications();
+  const { list, loading, markRead, markAllRead } = useNotifications();
 
   const unreadCount = list.filter((n) => !n.isRead).length;
 
@@ -31,7 +31,9 @@ export default function Notifications() {
       </div>
 
       {/* ── 알림 목록 ── */}
-      {list.length > 0 ? (
+      {loading ? (
+        <p className="text-sm text-gray-400 text-center py-20">불러오는 중...</p>
+      ) : list.length > 0 ? (
         <div className="space-y-2">
           {list.map((noti) => (
             <button
@@ -72,6 +74,7 @@ export default function Notifications() {
           <p className="text-xs text-gray-300 mt-1">새 알림이 오면 여기에 표시됩니다.</p>
         </div>
       )}
+
     </ParticipantLayout>
   );
 }

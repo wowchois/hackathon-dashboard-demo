@@ -53,7 +53,23 @@ export default function Submit() {
     }
   };
 
-  if (teamLoading || loadingSubmission) {
+  if (teamLoading) {
+    return (
+      <ParticipantLayout>
+        <p className="text-sm text-gray-400 text-center py-10">불러오는 중...</p>
+      </ParticipantLayout>
+    );
+  }
+
+  if (!team) {
+    return (
+      <ParticipantLayout>
+        <p className="text-sm text-gray-400 text-center py-10">아직 지정된 팀이 없습니다.</p>
+      </ParticipantLayout>
+    );
+  }
+
+  if (loadingSubmission) {
     return (
       <ParticipantLayout>
         <p className="text-sm text-gray-400 text-center py-10">불러오는 중...</p>
