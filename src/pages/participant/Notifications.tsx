@@ -1,23 +1,11 @@
-import { useState } from 'react';
 import ParticipantLayout from '../../components/layout/ParticipantLayout';
-import { notifications as initialNotifications } from '../../data/mockData';
-import type { Notification } from '../../data/mockData';
+import { useNotifications } from '../../hooks/useNotifications';
 import { Bell, CheckCheck } from 'lucide-react';
 
 export default function Notifications() {
-  const [list, setList] = useState<Notification[]>(initialNotifications);
+  const { list, markRead, markAllRead } = useNotifications();
 
   const unreadCount = list.filter((n) => !n.isRead).length;
-
-  const markAllRead = () => {
-    setList((prev) => prev.map((n) => ({ ...n, isRead: true })));
-  };
-
-  const markRead = (id: string) => {
-    setList((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
-  };
 
   return (
     <ParticipantLayout>
@@ -34,7 +22,7 @@ export default function Notifications() {
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-medium text-[#80766b] hover:text-[#6e645a] transition-colors"
           >
             <CheckCheck className="w-4 h-4" />
             전체 읽음

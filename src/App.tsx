@@ -1,4 +1,8 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+// Pages
+import Login from './pages/Login';
 // Admin pages
 import Dashboard from './pages/admin/Dashboard';
 import Participants from './pages/admin/Participants';
@@ -13,49 +17,112 @@ import ParticipantNotices from './pages/participant/Notices';
 import Submit from './pages/participant/Submit';
 import Notifications from './pages/participant/Notifications';
 
-function Home() {
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
-      <div className="bg-white rounded-xl shadow p-10 text-center max-w-md w-full">
-        <h1 className="text-4xl font-bold text-indigo-600 mb-8">Hackathon Dashboard</h1>
-        <div className="flex gap-4 justify-center">
-          <Link
-            to="/admin"
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
-          >
-            Admin
-          </Link>
-          <Link
-            to="/participant"
-            className="px-6 py-2 bg-gray-100 text-gray-800 rounded-lg font-medium hover:bg-gray-200 transition-colors"
-          >
-            Participant
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        {/* Admin */}
-        <Route path="/admin" element={<Dashboard />} />
-        <Route path="/admin/participants" element={<Participants />} />
-        <Route path="/admin/notices" element={<AdminNotices />} />
-        <Route path="/admin/submissions" element={<Submissions />} />
-        <Route path="/admin/scores" element={<Scoring />} />
-        <Route path="/admin/score-input" element={<ScoreInput />} />
-        {/* Participant */}
-        <Route path="/participant" element={<ParticipantDashboard />} />
-        <Route path="/participant/schedule" element={<Timeline />} />
-        <Route path="/participant/notices" element={<ParticipantNotices />} />
-        <Route path="/participant/submit" element={<Submit />} />
-        <Route path="/participant/notifications" element={<Notifications />} />
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          {/* 루트: 로그인 페이지로 */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+
+          {/* 로그인 */}
+          <Route path="/login" element={<Login />} />
+
+          {/* ── 관리자 전용 ─────────────────────────────────────── */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/participants"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <Participants />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/notices"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <AdminNotices />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/submissions"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <Submissions />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/scores"
+            element={
+              <ProtectedRoute roles={['admin', 'judge']}>
+                <Scoring />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 점수 입력 — 관리자 + 심사위원 모두 접근 가능 */}
+          <Route
+            path="/admin/score-input"
+            element={
+              <ProtectedRoute roles={['admin', 'judge']}>
+                <ScoreInput />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ── 참가자 전용 ─────────────────────────────────────── */}
+          <Route
+            path="/participant"
+            element={
+              <ProtectedRoute roles={['participant']}>
+                <ParticipantDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/participant/schedule"
+            element={
+              <ProtectedRoute roles={['participant']}>
+                <Timeline />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/participant/notices"
+            element={
+              <ProtectedRoute roles={['participant']}>
+                <ParticipantNotices />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/participant/submit"
+            element={
+              <ProtectedRoute roles={['participant']}>
+                <Submit />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/participant/notifications"
+            element={
+              <ProtectedRoute roles={['participant']}>
+                <Notifications />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

@@ -1,11 +1,9 @@
 import ParticipantLayout from '../../components/layout/ParticipantLayout';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
-import { useTeams } from '../../hooks/useTeams';
 import { useParticipants } from '../../hooks/useParticipants';
+import { useCurrentParticipant } from '../../hooks/useCurrentParticipant';
 import { CheckCircle2, Clock } from 'lucide-react';
-
-const MY_TEAM_ID = 't1';
 
 function Initials({ name }: { name: string }) {
   return (
@@ -16,15 +14,22 @@ function Initials({ name }: { name: string }) {
 }
 
 export default function ParticipantDashboard() {
-  const teams = useTeams();
   const participants = useParticipants();
+  const { team, loading } = useCurrentParticipant();
 
-  const myTeam = teams.find((t) => t.id === MY_TEAM_ID);
-  const myMembers = myTeam
-    ? participants.filter((p) => myTeam.members.includes(p.id))
+  const myMembers = team
+    ? participants.filter((p) => p.team === team.id)
     : [];
 
-  if (!myTeam) {
+  if (loading) {
+    return (
+      <ParticipantLayout>
+        <p className="text-sm text-gray-400 text-center py-10">불러오는 중...</p>
+      </ParticipantLayout>
+    );
+  }
+
+  if (!team) {
     return (
       <ParticipantLayout>
         <p className="text-sm text-gray-400 text-center py-10">팀 정보를 불러올 수 없습니다.</p>
@@ -32,7 +37,8 @@ export default function ParticipantDashboard() {
     );
   }
 
-  const submitted = myTeam.submitStatus === 'submitted';
+  const submitStatus = team.submit_status;
+  const submitted = submitStatus === 'submitted';
 
   return (
     <ParticipantLayout>
@@ -40,10 +46,10 @@ export default function ParticipantDashboard() {
       <Card className="mb-5">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-800">{myTeam.name}</h1>
-            <p className="text-sm text-gray-400 mt-0.5">팀원 {myTeam.members.length}명</p>
+            <h1 className="text-xl font-bold text-gray-800">{team.name}</h1>
+            <p className="text-sm text-gray-400 mt-0.5">팀원 {myMembers.length}명</p>
           </div>
-          <Badge status={myTeam.submitStatus} />
+          <Badge status={submitStatus} />
         </div>
       </Card>
 
@@ -68,7 +74,7 @@ export default function ParticipantDashboard() {
 
       {/* ── 팀 아이디어 ── */}
       <Card title="팀 아이디어" className="mb-5">
-        <p className="text-sm text-gray-600 leading-relaxed">{myTeam.idea}</p>
+        <p className="text-sm text-gray-600 leading-relaxed">{team.idea}</p>
       </Card>
 
       {/* ── 제출 현황 요약 ── */}

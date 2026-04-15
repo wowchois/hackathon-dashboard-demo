@@ -1,15 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/layout/AdminLayout';
 import Card from '../../components/ui/Card';
 import { useTeams } from '../../hooks/useTeams';
-import { getScores, updateScore, SCORE_CRITERIA } from '../../data/scoreStore';
-import { useScores } from '../../hooks/useScores';
+import { useJudgeScores } from '../../hooks/useJudgeScores';
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  SCORE_CRITERIA,
+  updateScore,
+} from '../../data/scoreStore';
 import { ArrowLeft, Save, CheckCircle2 } from 'lucide-react';
 
-type DraftScores = Record<string, { creativity: number; completion: number; presentation: number }>;
+type TeamDraft = { creativity: number; completion: number; presentation: number };
+type DraftScores = Record<string, TeamDraft>;
 
-function buildDraft(scores: ReturnType<typeof getScores>): DraftScores {
+function buildDraft(scores: ReturnType<typeof useJudgeScores>): DraftScores {
   return Object.fromEntries(
     scores.map((s) => [
       s.teamId,
@@ -20,9 +25,24 @@ function buildDraft(scores: ReturnType<typeof getScores>): DraftScores {
 
 export default function ScoreInput() {
   const teams = useTeams();
-  const scores = useScores();
-  const [draft, setDraft] = useState<DraftScores>(() => buildDraft(getScores()));
+  const { user } = useAuth();
+
+  // 로그인된 사용자를 심사위원으로 사용
+  const judgeId = user?.id ?? '';
+  const judgeName = user?.name ?? '';
+
+  const judgeScores = useJudgeScores(judgeId, judgeName);
+
+  const [draft, setDraft] = useState<DraftScores>({});
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  const hydrated = useRef(false);
+
+  // judgeScores는 비동기로 로드되므로 첫 데이터 도착 시 한 번만 draft를 초기화
+  useEffect(() => {
+    if (hydrated.current || judgeScores.length === 0) return;
+    setDraft(buildDraft(judgeScores));
+    hydrated.current = true;
+  }, [judgeScores]);
 
   const setField = (
     teamId: string,
@@ -31,22 +51,39 @@ export default function ScoreInput() {
   ) => {
     const max = SCORE_CRITERIA.find((c) => c.key === field)!.max;
     const val = Math.min(max, Math.max(0, Number(raw) || 0));
-    setDraft((prev) => ({ ...prev, [teamId]: { ...(prev[teamId] ?? { creativity: 0, completion: 0, presentation: 0 }), [field]: val } }));
-    setSaved((prev) => { const next = new Set(prev); next.delete(teamId); return next; });
-  };
-
-  const handleSave = (teamId: string) => {
-    const d = draft[teamId] ?? { creativity: 0, completion: 0, presentation: 0 };
-    updateScore(teamId, d);
-    setSaved((prev) => new Set(prev).add(teamId));
-  };
-
-  const handleSaveAll = () => {
-    teams.forEach((t) => {
-      const d = draft[t.id] ?? { creativity: 0, completion: 0, presentation: 0 };
-      updateScore(t.id, d);
+    setDraft((prev) => ({
+      ...prev,
+      [teamId]: { ...(prev[teamId] ?? { creativity: 0, completion: 0, presentation: 0 }), [field]: val },
+    }));
+    setSaved((prev) => {
+      const next = new Set(prev);
+      next.delete(teamId);
+      return next;
     });
-    setSaved(new Set(teams.map((t) => t.id)));
+  };
+
+  const handleSave = async (teamId: string) => {
+    const d = draft[teamId] ?? { creativity: 0, completion: 0, presentation: 0 };
+    try {
+      await updateScore(judgeId, judgeName, teamId, d);
+      setSaved((prev) => new Set(prev).add(teamId));
+    } catch {
+      console.error('점수 저장 실패');
+    }
+  };
+
+  const handleSaveAll = async () => {
+    try {
+      await Promise.all(
+        teams.map((t) => {
+          const d = draft[t.id] ?? { creativity: 0, completion: 0, presentation: 0 };
+          return updateScore(judgeId, judgeName, t.id, d);
+        })
+      );
+      setSaved(new Set(teams.map((t) => t.id)));
+    } catch {
+      console.error('전체 점수 저장 실패');
+    }
   };
 
   const getTotal = (teamId: string) => {
@@ -55,7 +92,7 @@ export default function ScoreInput() {
   };
 
   const isChanged = (teamId: string) => {
-    const original = scores.find((s) => s.teamId === teamId);
+    const original = judgeScores.find((s) => s.teamId === teamId);
     if (!original) return true;
     const d = draft[teamId] ?? { creativity: 0, completion: 0, presentation: 0 };
     return (
@@ -82,11 +119,18 @@ export default function ScoreInput() {
         </div>
         <button
           onClick={handleSaveAll}
-          className="flex items-center gap-1.5 px-3 py-2 bg-[#80766b] text-white text-sm font-medium rounded-lg hover:bg-[#6e645a] transition-colors"
+          disabled={!hydrated.current}
+          className="flex items-center gap-1.5 px-3 py-2 bg-[#80766b] text-white text-sm font-medium rounded-lg hover:bg-[#6e645a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <Save className="w-4 h-4" />
           전체 저장
         </button>
+      </div>
+
+      {/* ── 심사위원 정보 ── */}
+      <div className="mb-6 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center gap-2 text-sm text-gray-600">
+        <span className="font-medium text-gray-800">{judgeName}</span>
+        <span className="text-gray-400">심사위원으로 입력 중</span>
       </div>
 
       {/* ── 평가 기준 안내 ── */}
@@ -123,7 +167,6 @@ export default function ScoreInput() {
                   const total = getTotal(team.id);
                   const isSaved = saved.has(team.id);
                   const changed = isChanged(team.id);
-
                   return (
                     <tr key={team.id} className="hover:bg-gray-50 transition-colors">
                       <td className="py-3.5 pr-4 font-medium text-gray-800">{team.name}</td>
@@ -140,9 +183,7 @@ export default function ScoreInput() {
                         </td>
                       ))}
                       <td className="py-3.5 pr-4 text-center">
-                        <span className={`font-bold text-base ${
-                          total === 0 ? 'text-gray-300' : 'text-gray-800'
-                        }`}>
+                        <span className={`font-bold text-base ${total === 0 ? 'text-gray-300' : 'text-gray-800'}`}>
                           {total}
                         </span>
                       </td>
@@ -178,19 +219,14 @@ export default function ScoreInput() {
           const total = getTotal(team.id);
           const isSaved = saved.has(team.id);
           const changed = isChanged(team.id);
-
           return (
             <Card key={team.id}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-800">{team.name}</h3>
-                <span className={`text-2xl font-bold ${
-                  total === 0 ? 'text-gray-200' : 'text-gray-800'
-                }`}>
-                  {total}
-                  <span className="text-sm font-normal text-gray-400">점</span>
+                <span className={`text-2xl font-bold ${total === 0 ? 'text-gray-200' : 'text-gray-800'}`}>
+                  {total}<span className="text-sm font-normal text-gray-400">점</span>
                 </span>
               </div>
-
               <div className="space-y-3">
                 {SCORE_CRITERIA.map((c) => (
                   <div key={c.key} className="flex items-center gap-3">
@@ -215,7 +251,6 @@ export default function ScoreInput() {
                   </div>
                 ))}
               </div>
-
               <div className="mt-4 pt-3 border-t border-gray-100">
                 {isSaved && !changed ? (
                   <div className="flex items-center justify-center gap-1.5 text-sm text-green-600">

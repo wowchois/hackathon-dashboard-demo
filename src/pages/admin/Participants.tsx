@@ -195,30 +195,26 @@ export default function Participants() {
     return Object.keys(next).length === 0;
   };
 
-  const handlePSubmit = () => {
+  const handlePSubmit = async () => {
     if (!validateP()) return;
-
-    if (pModal?.mode === 'add') {
-      addParticipant({
+    try {
+      const data = {
         name: pForm.name.trim(),
         email: pForm.email.trim(),
         team: pForm.team,
         department: pForm.department.trim(),
         position: pForm.position.trim(),
         status: pForm.status,
-      });
-    } else if (pModal?.mode === 'edit') {
-      const id = pModal.id;
-      updateParticipant(id, {
-        name: pForm.name.trim(),
-        email: pForm.email.trim(),
-        team: pForm.team,
-        department: pForm.department.trim(),
-        position: pForm.position.trim(),
-        status: pForm.status,
-      });
+      };
+      if (pModal?.mode === 'add') {
+        await addParticipant(data);
+      } else if (pModal?.mode === 'edit') {
+        await updateParticipant(pModal.id, data);
+      }
+      closePModal();
+    } catch {
+      setToast({ visible: true, message: '저장 중 오류가 발생했습니다' });
     }
-    closePModal();
   };
 
   const setPField = (key: keyof ParticipantFormState, value: string) => {
@@ -226,10 +222,17 @@ export default function Participants() {
     if (pErrors[key]) setPErrors((prev) => ({ ...prev, [key]: undefined }));
   };
 
-  const handleDeleteParticipant = (id: string) => {
-    const ok = deleteParticipant(id);
-    if (!ok) {
+  const handleDeleteParticipant = async (id: string) => {
+    const p = participants.find((pp) => pp.id === id);
+    const team = teams.find((t) => t.id === p?.team);
+    if (team?.locked) {
       setToast({ visible: true, message: '잠긴 팀 소속 참가자는 삭제할 수 없습니다' });
+      return;
+    }
+    try {
+      await deleteParticipant(id);
+    } catch {
+      setToast({ visible: true, message: '삭제 중 오류가 발생했습니다' });
     }
   };
 
@@ -266,32 +269,50 @@ export default function Participants() {
     return Object.keys(next).length === 0;
   };
 
-  const handleTSubmit = () => {
+  const handleTSubmit = async () => {
     if (!validateT()) return;
-
-    if (tModal?.mode === 'add') {
-      addTeam({ name: tForm.name.trim(), idea: tForm.idea.trim() });
-    } else if (tModal?.mode === 'edit') {
-      updateTeam(tModal.id, { name: tForm.name.trim(), idea: tForm.idea.trim() });
+    const t = tModal?.mode === 'edit' ? teams.find((t) => t.id === (tModal as { mode: 'edit'; id: string }).id) : null;
+    if (t?.locked) {
+      setToast({ visible: true, message: '잠긴 팀은 수정할 수 없습니다' });
+      closeTModal();
+      return;
     }
-    closeTModal();
+    try {
+      if (tModal?.mode === 'add') {
+        await addTeam({ name: tForm.name.trim(), idea: tForm.idea.trim() });
+      } else if (tModal?.mode === 'edit') {
+        await updateTeam(tModal.id, { name: tForm.name.trim(), idea: tForm.idea.trim() });
+      }
+      closeTModal();
+    } catch {
+      setToast({ visible: true, message: '저장 중 오류가 발생했습니다' });
+    }
   };
 
-  const handleDeleteTeam = (id: string) => {
-    try {
-      deleteTeam(id);
-    } catch {
+  const handleDeleteTeam = async (id: string) => {
+    const team = teams.find((t) => t.id === id);
+    if (team?.locked) {
       setToast({ visible: true, message: '잠긴 팀은 삭제할 수 없습니다' });
+      return;
+    }
+    try {
+      await deleteTeam(id);
+    } catch {
+      setToast({ visible: true, message: '팀 삭제 중 오류가 발생했습니다' });
     }
   };
 
   // ── 자동 매칭 ────────────────────────────────────────────
-  const handleAutoMatch = () => {
-    const result = autoMatch(matchOptions);
-    setToast({
-      visible: true,
-      message: `${result.matched}명 매칭 완료, ${result.unmatched}명 미배정`,
-    });
+  const handleAutoMatch = async () => {
+    try {
+      const result = await autoMatch(matchOptions);
+      setToast({
+        visible: true,
+        message: `${result.matched}명 매칭 완료, ${result.unmatched}명 미배정`,
+      });
+    } catch {
+      setToast({ visible: true, message: '자동 매칭 중 오류가 발생했습니다' });
+    }
   };
 
   const hideToast = () => setToast((prev) => ({ ...prev, visible: false }));
@@ -342,7 +363,7 @@ export default function Participants() {
           onAddTeam={openTAdd}
           onEditTeam={openTEdit}
           onDeleteTeam={handleDeleteTeam}
-          onToggleLock={toggleTeamLock}
+          onToggleLock={(id) => toggleTeamLock(id, teams.find((t) => t.id === id)?.locked ?? false)}
         />
       )}
 

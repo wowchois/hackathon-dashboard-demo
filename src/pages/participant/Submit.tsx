@@ -1,43 +1,65 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ParticipantLayout from '../../components/layout/ParticipantLayout';
 import Card from '../../components/ui/Card';
+import { useCurrentParticipant } from '../../hooks/useCurrentParticipant';
+import { apiFetchSubmission, apiUpsertSubmission } from '../../api/submissions';
+import type { Submission } from '../../api/submissions';
 import { CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 
-interface SubmissionData {
-  github: string;
-  slides: string;
-  description: string;
-  submittedAt: string;
-}
-
-// Team Alpha(t1)는 mockData상 이미 제출 완료
-const INITIAL_SUBMISSION: SubmissionData = {
-  github: 'https://github.com/team-alpha/disaster-response',
-  slides: 'https://docs.example.com/alpha-slides',
-  description:
-    'AI 기반 실시간 재난 대응 플랫폼입니다. 시민 제보와 공공 API 데이터를 결합하여 재난 상황을 실시간으로 시각화하고, 머신러닝 모델로 대응 자원을 자동 배치합니다.',
-  submittedAt: '2025-04-20 14:23',
-};
-
 export default function Submit() {
-  const [submitted, setSubmitted] = useState(true);
-  const [submission, setSubmission] = useState<SubmissionData>(INITIAL_SUBMISSION);
+  const { team, loading: teamLoading } = useCurrentParticipant();
 
-  // 폼 상태 (수정 전 초기값 = 현재 제출 데이터)
-  const [github, setGithub] = useState(INITIAL_SUBMISSION.github);
-  const [slides, setSlides] = useState(INITIAL_SUBMISSION.slides);
-  const [description, setDescription] = useState(INITIAL_SUBMISSION.description);
+  const [submission, setSubmission] = useState<Submission | null>(null);
+  const [loadingSubmission, setLoadingSubmission] = useState(true);
 
+  const [github, setGithub] = useState('');
+  const [slides, setSlides] = useState('');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!team?.id) return;
+    setLoadingSubmission(true);
+    apiFetchSubmission(team.id)
+      .then((data) => {
+        setSubmission(data);
+        if (data) {
+          setGithub(data.githubUrl);
+          setSlides(data.slidesUrl);
+          setDescription(data.description);
+        }
+      })
+      .finally(() => setLoadingSubmission(false));
+  }, [team?.id]);
+
+  const submitted = submission !== null;
   const isFormValid = github.trim() && slides.trim() && description.trim();
 
-  const handleSubmit = () => {
-    if (!isFormValid) return;
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const submittedAt = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    setSubmission({ github: github.trim(), slides: slides.trim(), description: description.trim(), submittedAt });
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    if (!isFormValid || !team?.id) return;
+    setSaving(true);
+    try {
+      await apiUpsertSubmission(team.id, {
+        githubUrl: github.trim(),
+        slidesUrl: slides.trim(),
+        description: description.trim(),
+      });
+      const updated = await apiFetchSubmission(team.id);
+      setSubmission(updated);
+    } catch {
+      console.error('제출 실패');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (teamLoading || loadingSubmission) {
+    return (
+      <ParticipantLayout>
+        <p className="text-sm text-gray-400 text-center py-10">불러오는 중...</p>
+      </ParticipantLayout>
+    );
+  }
 
   return (
     <ParticipantLayout>
@@ -57,7 +79,7 @@ export default function Submit() {
             {submitted ? '제출 완료' : '미제출'}
           </p>
           <p className={`text-xs mt-0.5 ${submitted ? 'text-green-600' : 'text-gray-400'}`}>
-            {submitted ? `${submission.submittedAt} 제출됨` : '아직 제출하지 않았습니다.'}
+            {submitted ? `${submission!.submittedAt} 제출됨` : '아직 제출하지 않았습니다.'}
           </p>
         </div>
       </div>
@@ -70,30 +92,30 @@ export default function Submit() {
               <div>
                 <p className="text-xs text-gray-400 mb-1">GitHub 저장소</p>
                 <a
-                  href={submission.github}
+                  href={submission!.githubUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-sm text-indigo-600 hover:underline break-all"
+                  className="flex items-center gap-1.5 text-sm text-[#80766b] hover:underline break-all"
                 >
-                  {submission.github}
+                  {submission!.githubUrl}
                   <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                 </a>
               </div>
               <div>
                 <p className="text-xs text-gray-400 mb-1">발표 자료</p>
                 <a
-                  href={submission.slides}
+                  href={submission!.slidesUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-sm text-indigo-600 hover:underline break-all"
+                  className="flex items-center gap-1.5 text-sm text-[#80766b] hover:underline break-all"
                 >
-                  {submission.slides}
+                  {submission!.slidesUrl}
                   <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                 </a>
               </div>
               <div>
                 <p className="text-xs text-gray-400 mb-1">프로젝트 설명</p>
-                <p className="text-sm text-gray-700 leading-relaxed">{submission.description}</p>
+                <p className="text-sm text-gray-700 leading-relaxed">{submission!.description}</p>
               </div>
             </div>
           </Card>
@@ -103,7 +125,7 @@ export default function Submit() {
             <p>
               제출 내용 수정이 필요한 경우 운영진에게 문의해주세요.
               <br />
-              <span className="text-amber-600 text-xs">contact@hackathon2025.com</span>
+              <span className="text-amber-600 text-xs">contact@hackathon2026.com</span>
             </p>
           </div>
         </>
@@ -132,7 +154,7 @@ export default function Submit() {
                   placeholder="https://github.com/your-team/project"
                   value={github}
                   onChange={(e) => setGithub(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-gray-300"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30 placeholder-gray-300"
                 />
               </div>
               <div>
@@ -144,7 +166,7 @@ export default function Submit() {
                   placeholder="https://slides.example.com/your-presentation"
                   value={slides}
                   onChange={(e) => setSlides(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-gray-300"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30 placeholder-gray-300"
                 />
               </div>
               <div>
@@ -156,15 +178,15 @@ export default function Submit() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={5}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-gray-300 resize-none"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30 placeholder-gray-300 resize-none"
                 />
               </div>
               <button
                 onClick={handleSubmit}
-                disabled={!isFormValid}
-                className="w-full py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                disabled={!isFormValid || saving}
+                className="w-full py-2.5 bg-[#80766b] text-white text-sm font-semibold rounded-lg hover:bg-[#6e645a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                제출하기
+                {saving ? '제출 중...' : '제출하기'}
               </button>
             </div>
           </Card>

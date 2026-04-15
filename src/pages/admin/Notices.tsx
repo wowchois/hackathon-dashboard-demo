@@ -1,20 +1,23 @@
 import { useState } from 'react';
 import AdminLayout from '../../components/layout/AdminLayout';
 import Card from '../../components/ui/Card';
-import { notices as initialNotices } from '../../data/mockData';
+import { useNotices } from '../../hooks/useNotices';
+import { apiAddNotice, apiUpdateNotice, apiDeleteNotice } from '../../api/notices';
 import type { Notice } from '../../data/mockData';
 import { Plus, Pencil, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 type FormMode = 'add' | 'edit';
 
 export default function Notices() {
-  const [noticeList, setNoticeList] = useState<Notice[]>(initialNotices);
+  const { data: notices, refetch } = useNotices();
+
   const [showForm, setShowForm] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>('add');
   const [editId, setEditId] = useState<string | null>(null);
   const [titleInput, setTitleInput] = useState('');
   const [contentInput, setContentInput] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
@@ -48,32 +51,31 @@ export default function Notices() {
     setEditId(null);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!titleInput.trim() || !contentInput.trim()) return;
-
-    if (formMode === 'add') {
-      const newNotice: Notice = {
-        id: `n${Date.now()}`,
-        title: titleInput.trim(),
-        content: contentInput.trim(),
-        date: new Date().toISOString().split('T')[0],
-        author: '관리자',
-      };
-      setNoticeList((prev) => [newNotice, ...prev]);
-    } else if (editId) {
-      setNoticeList((prev) =>
-        prev.map((n) =>
-          n.id === editId
-            ? { ...n, title: titleInput.trim(), content: contentInput.trim() }
-            : n
-        )
-      );
+    setSaving(true);
+    try {
+      if (formMode === 'add') {
+        await apiAddNotice({ title: titleInput.trim(), content: contentInput.trim() });
+      } else if (editId) {
+        await apiUpdateNotice(editId, { title: titleInput.trim(), content: contentInput.trim() });
+      }
+      refetch();
+      closeForm();
+    } catch {
+      console.error('공지 저장 실패');
+    } finally {
+      setSaving(false);
     }
-    closeForm();
   };
 
-  const handleDelete = (id: string) => {
-    setNoticeList((prev) => prev.filter((n) => n.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      await apiDeleteNotice(id);
+      refetch();
+    } catch {
+      console.error('공지 삭제 실패');
+    }
   };
 
   return (
@@ -81,11 +83,11 @@ export default function Notices() {
       {/* ── 헤더 ── */}
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-base sm:text-lg font-semibold text-gray-800">
-          공지사항 ({noticeList.length})
+          공지사항 ({notices.length})
         </h2>
         <button
           onClick={openAdd}
-          className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 bg-[#80766b] text-white text-sm font-medium rounded-lg hover:bg-[#6e645a] transition-colors"
         >
           <Plus className="w-4 h-4" />
           공지 작성
@@ -112,14 +114,14 @@ export default function Notices() {
               placeholder="제목을 입력하세요"
               value={titleInput}
               onChange={(e) => setTitleInput(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-gray-300"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30 placeholder-gray-300"
             />
             <textarea
               placeholder="내용을 입력하세요"
               value={contentInput}
               onChange={(e) => setContentInput(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 placeholder-gray-300 resize-none"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30 placeholder-gray-300 resize-none"
             />
             <div className="flex justify-end gap-2">
               <button
@@ -130,10 +132,10 @@ export default function Notices() {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={!titleInput.trim() || !contentInput.trim()}
-                className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                disabled={!titleInput.trim() || !contentInput.trim() || saving}
+                className="px-4 py-2 text-sm text-white bg-[#80766b] rounded-lg hover:bg-[#6e645a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                {formMode === 'add' ? '등록' : '저장'}
+                {saving ? '저장 중...' : formMode === 'add' ? '등록' : '저장'}
               </button>
             </div>
           </div>
@@ -141,52 +143,52 @@ export default function Notices() {
       )}
 
       {/* ── 공지 목록 ── */}
-      {noticeList.length > 0 ? (
+      {notices.length > 0 ? (
         <div className="space-y-3">
-          {noticeList.map((notice) => {
+          {notices.map((notice) => {
             const expanded = expandedIds.has(notice.id);
             return (
-            <Card key={notice.id}>
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium text-gray-800">{notice.title}</p>
+              <Card key={notice.id}>
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-gray-800">{notice.title}</p>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {notice.date} · {notice.author}
+                    </p>
+                    <p className={`text-sm text-gray-500 mt-2 whitespace-pre-wrap ${expanded ? '' : 'line-clamp-2'}`}>
+                      {notice.content}
+                    </p>
+                    <button
+                      onClick={() => toggleExpand(notice.id)}
+                      className="flex items-center gap-1 mt-1.5 text-xs text-[#80766b] hover:text-[#6e645a] transition-colors"
+                    >
+                      {expanded ? (
+                        <><ChevronUp className="w-3.5 h-3.5" />접기</>
+                      ) : (
+                        <><ChevronDown className="w-3.5 h-3.5" />더보기</>
+                      )}
+                    </button>
                   </div>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {notice.date} · {notice.author}
-                  </p>
-                  <p className={`text-sm text-gray-500 mt-2 whitespace-pre-wrap ${expanded ? '' : 'line-clamp-2'}`}>
-                    {notice.content}
-                  </p>
-                  <button
-                    onClick={() => toggleExpand(notice.id)}
-                    className="flex items-center gap-1 mt-1.5 text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
-                  >
-                    {expanded ? (
-                      <><ChevronUp className="w-3.5 h-3.5" />접기</>
-                    ) : (
-                      <><ChevronDown className="w-3.5 h-3.5" />더보기</>
-                    )}
-                  </button>
+                  <div className="flex gap-1 shrink-0">
+                    <button
+                      onClick={() => openEdit(notice)}
+                      className="p-1.5 text-gray-400 hover:text-[#80766b] hover:bg-[#80766b]/10 rounded-lg transition-colors"
+                      title="수정"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(notice.id)}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="삭제"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-1 shrink-0">
-                  <button
-                    onClick={() => openEdit(notice)}
-                    className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                    title="수정"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(notice.id)}
-                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="삭제"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </Card>
+              </Card>
             );
           })}
         </div>
@@ -195,7 +197,7 @@ export default function Notices() {
           <p className="text-gray-400 text-sm">등록된 공지사항이 없습니다.</p>
           <button
             onClick={openAdd}
-            className="mt-3 text-indigo-600 text-sm font-medium hover:underline"
+            className="mt-3 text-[#80766b] text-sm font-medium hover:underline"
           >
             첫 공지를 작성해보세요
           </button>
