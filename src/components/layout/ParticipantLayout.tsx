@@ -42,7 +42,7 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
   const displayTeam = team?.name ?? '내 팀';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen overflow-hidden bg-gray-50 flex">
       {/* ── 데스크탑 사이드바 ───────────────────────────────── */}
       <aside className="hidden lg:flex flex-col fixed inset-y-0 left-0 w-60 bg-white border-r border-gray-100 z-30">
         {/* 로고 + 사용자 정보 */}

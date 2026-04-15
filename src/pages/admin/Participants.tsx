@@ -96,8 +96,7 @@ function Toast({ toast, onHide }: { toast: ToastState; onHide: () => void }) {
 
   return (
     <div
-      className="fixed bottom-6 z-[100] rounded-xl bg-gray-800 px-4 py-3 text-sm font-medium text-white shadow-lg"
-      style={{ left: 'calc(50% + 120px)', transform: 'translateX(-50%)' }}
+      className="fixed bottom-6 z-[100] left-1/2 -translate-x-1/2 lg:left-[calc(50%+120px)] rounded-xl bg-gray-800 px-4 py-3 text-sm font-medium text-white shadow-lg"
     >
       {toast.message}
     </div>
@@ -1196,7 +1195,7 @@ function ParticipantsTab({
 
       <Card>
         <div className="mb-3 flex items-center justify-between gap-3 text-xs text-gray-500">
-          <p>모바일과 PC 모두 동일한 인라인 그리드를 사용하며, 좁은 화면에서는 좌우 스크롤로 확인할 수 있습니다.</p>
+          <p>좌우 스크롤로 전체 내용 확인</p>
           <p className="shrink-0">신규 행 {newRows.length}/{MAX_NEW_ROWS}</p>
         </div>
 
