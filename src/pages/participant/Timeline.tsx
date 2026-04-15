@@ -1,6 +1,6 @@
 import ParticipantLayout from '../../components/layout/ParticipantLayout';
 import Card from '../../components/ui/Card';
-import { milestones } from '../../data/mockData';
+import { useMilestones } from '../../hooks/useMilestones';
 import { CheckCircle2, Circle, Loader2 } from 'lucide-react';
 
 function getDday(dateStr: string): number {
@@ -18,8 +18,12 @@ function formatDday(days: number): string {
 }
 
 export default function Timeline() {
+  const milestones = useMilestones();
+
   const doneMilestones = milestones.filter((m) => m.isDone);
-  const progress = Math.round((doneMilestones.length / milestones.length) * 100);
+  const progress = milestones.length > 0
+    ? Math.round((doneMilestones.length / milestones.length) * 100)
+    : 0;
 
   // 첫 번째 미완료 마일스톤 = 현재 진행 중
   const currentIdx = milestones.findIndex((m) => !m.isDone);

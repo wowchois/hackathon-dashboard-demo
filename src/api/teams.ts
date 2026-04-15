@@ -39,3 +39,13 @@ export async function apiDeleteTeam(id: string): Promise<void> {
   const { error } = await supabase.from('teams').delete().eq('id', id);
   if (error) throw error;
 }
+
+export async function apiFetchTeamById(id: string): Promise<TeamRow | null> {
+  const { data, error } = await supabase
+    .from('teams')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error) return null;
+  return data as TeamRow;
+}

@@ -68,3 +68,13 @@ export async function apiDeleteParticipant(id: string): Promise<void> {
   const { error } = await supabase.from('participants').delete().eq('id', id);
   if (error) throw error;
 }
+
+export async function apiFetchParticipantByEmail(email: string): Promise<Participant | null> {
+  const { data, error } = await supabase
+    .from('participants')
+    .select('*')
+    .eq('email', email)
+    .single();
+  if (error) return null;
+  return fromDB(data as DBParticipant);
+}

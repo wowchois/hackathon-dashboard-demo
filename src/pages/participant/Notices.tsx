@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import ParticipantLayout from '../../components/layout/ParticipantLayout';
-import { notices } from '../../data/mockData';
+import { useNotices } from '../../hooks/useNotices';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
-// 날짜 기준 내림차순 정렬
-const sorted = [...notices].sort((a, b) => b.date.localeCompare(a.date));
-const latestDate = sorted[0]?.date;
-
 export default function ParticipantNotices() {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set([sorted[0]?.id]));
+  const notices = useNotices();
+  const sorted = [...notices].sort((a, b) => b.date.localeCompare(a.date));
+  const latestDate = sorted[0]?.date;
+
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const toggle = (id: string) => {
     setExpanded((prev) => {
@@ -36,7 +36,7 @@ export default function ParticipantNotices() {
             <div
               key={notice.id}
               className={`rounded-xl border overflow-hidden transition-colors ${
-                isOpen ? 'border-indigo-200' : 'border-gray-100'
+                isOpen ? 'border-[#80766b]/30' : 'border-gray-100'
               } bg-white`}
             >
               {/* 아코디언 헤더 */}
@@ -53,7 +53,7 @@ export default function ParticipantNotices() {
                     )}
                     <p
                       className={`text-sm font-medium truncate ${
-                        isOpen ? 'text-indigo-700' : 'text-gray-800'
+                        isOpen ? 'text-[#80766b]' : 'text-gray-800'
                       }`}
                     >
                       {notice.title}
@@ -74,7 +74,7 @@ export default function ParticipantNotices() {
 
               {/* 아코디언 내용 */}
               {isOpen && (
-                <div className="px-4 pb-4 border-t border-indigo-50">
+                <div className="px-4 pb-4 border-t border-gray-100">
                   <p className="text-sm text-gray-600 leading-relaxed pt-3">
                     {notice.content}
                   </p>
