@@ -236,6 +236,10 @@ export default function Participants() {
     limitLeader: true,
   });
   const [toast, setToast] = useState<ToastState>({ visible: false, message: '' });
+  const [confirmDialog, setConfirmDialog] = useState<{
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const displayTeams = useMemo(() => mergeTeams(teams, optimisticTeams), [teams, optimisticTeams]);
 
@@ -495,7 +499,7 @@ export default function Participants() {
     });
   };
 
-  const handleDeleteParticipant = async (id: string) => {
+  const handleDeleteParticipant = (id: string) => {
     const participant = displayParticipants.find((item) => item.id === id);
     const team = displayTeams.find((item) => item.id === participant?.team);
     if (team?.locked) {
@@ -503,14 +507,19 @@ export default function Participants() {
       return;
     }
 
-    try {
-      await deleteParticipant(id, participant?.userId);
-      cancelDraft(id);
-      setOptimisticParticipants((prev) => prev.filter((p) => p.id !== id));
-      setDeletedParticipantIds((prev) => new Set([...prev, id]));
-    } catch {
-      setToast({ visible: true, message: '참가자 삭제에 실패했습니다.' });
-    }
+    setConfirmDialog({
+      message: `'${participant?.name ?? '참가자'}'를 삭제하시겠습니까?`,
+      onConfirm: async () => {
+        try {
+          await deleteParticipant(id, participant?.userId);
+          cancelDraft(id);
+          setOptimisticParticipants((prev) => prev.filter((p) => p.id !== id));
+          setDeletedParticipantIds((prev) => new Set([...prev, id]));
+        } catch {
+          setToast({ visible: true, message: '참가자 삭제에 실패했습니다.' });
+        }
+      },
+    });
   };
 
   const openTAdd = () => {
@@ -696,18 +705,23 @@ export default function Participants() {
     }
   };
 
-  const handleDeleteTeam = async (id: string) => {
+  const handleDeleteTeam = (id: string) => {
     const team = teams.find((item) => item.id === id);
     if (team?.locked) {
       setToast({ visible: true, message: '잠금된 팀은 삭제할 수 없습니다.' });
       return;
     }
 
-    try {
-      await deleteTeam(id);
-    } catch {
-      setToast({ visible: true, message: '팀 삭제에 실패했습니다.' });
-    }
+    setConfirmDialog({
+      message: `'${team?.name ?? '팀'}'을 삭제하시겠습니까?`,
+      onConfirm: async () => {
+        try {
+          await deleteTeam(id);
+        } catch {
+          setToast({ visible: true, message: '팀 삭제에 실패했습니다.' });
+        }
+      },
+    });
   };
 
   const handleAutoMatch = async () => {
@@ -725,6 +739,32 @@ export default function Participants() {
   return (
     <AdminLayout>
       <Toast toast={toast} onHide={hideToast} />
+
+      {confirmDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmDialog(null)} />
+          <div className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <p className="text-sm text-gray-700">{confirmDialog.message}</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmDialog(null)}
+                className="rounded-xl bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  confirmDialog.onConfirm();
+                  setConfirmDialog(null);
+                }}
+                className="rounded-xl bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 transition-colors"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mb-5 flex border-b border-gray-200">
         {(['participants', 'teams'] as Tab[]).map((item) => (
