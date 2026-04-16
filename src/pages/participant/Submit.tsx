@@ -6,6 +6,30 @@ import { apiFetchSubmission, apiUpsertSubmission } from '../../api/submissions';
 import type { Submission } from '../../api/submissions';
 import { CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 
+function getSafeHttpsHref(value: string): string | null {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'https:' ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function getUrlError(value: string, label: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return `${label}을 입력해 주세요.`;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'https:') {
+      return `${label}은 https URL만 사용할 수 있습니다.`;
+    }
+    return null;
+  } catch {
+    return `${label} 형식이 올바르지 않습니다.`;
+  }
+}
+
 export default function Submit() {
   const { team, loading: teamLoading } = useCurrentParticipant();
 
@@ -15,6 +39,8 @@ export default function Submit() {
   const [github, setGithub] = useState('');
   const [slides, setSlides] = useState('');
   const [description, setDescription] = useState('');
+  const [githubError, setGithubError] = useState<string | null>(null);
+  const [slidesError, setSlidesError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -27,6 +53,8 @@ export default function Submit() {
           setGithub(data.githubUrl);
           setSlides(data.slidesUrl);
           setDescription(data.description);
+          setGithubError(null);
+          setSlidesError(null);
         }
       })
       .finally(() => setLoadingSubmission(false));
@@ -34,9 +62,18 @@ export default function Submit() {
 
   const submitted = submission !== null;
   const isFormValid = github.trim() && slides.trim() && description.trim();
+  const githubHref = submission ? getSafeHttpsHref(submission.githubUrl) : null;
+  const slidesHref = submission ? getSafeHttpsHref(submission.slidesUrl) : null;
 
   const handleSubmit = async () => {
     if (!isFormValid || !team?.id) return;
+
+    const nextGithubError = getUrlError(github, 'GitHub URL');
+    const nextSlidesError = getUrlError(slides, '발표 자료 URL');
+    setGithubError(nextGithubError);
+    setSlidesError(nextSlidesError);
+    if (nextGithubError || nextSlidesError) return;
+
     setSaving(true);
     try {
       await apiUpsertSubmission(team.id, {
@@ -107,27 +144,35 @@ export default function Submit() {
             <div className="space-y-4">
               <div>
                 <p className="text-xs text-gray-400 mb-1">GitHub 저장소</p>
-                <a
-                  href={submission!.githubUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-sm text-[#80766b] hover:underline break-all"
-                >
-                  {submission!.githubUrl}
-                  <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                </a>
+                {githubHref ? (
+                  <a
+                    href={githubHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-sm text-[#80766b] hover:underline break-all"
+                  >
+                    {submission!.githubUrl}
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                  </a>
+                ) : (
+                  <p className="text-sm text-red-600 break-all">{submission!.githubUrl}</p>
+                )}
               </div>
               <div>
                 <p className="text-xs text-gray-400 mb-1">발표 자료</p>
-                <a
-                  href={submission!.slidesUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-sm text-[#80766b] hover:underline break-all"
-                >
-                  {submission!.slidesUrl}
-                  <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                </a>
+                {slidesHref ? (
+                  <a
+                    href={slidesHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-sm text-[#80766b] hover:underline break-all"
+                  >
+                    {submission!.slidesUrl}
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                  </a>
+                ) : (
+                  <p className="text-sm text-red-600 break-all">{submission!.slidesUrl}</p>
+                )}
               </div>
               <div>
                 <p className="text-xs text-gray-400 mb-1">프로젝트 설명</p>
@@ -169,9 +214,14 @@ export default function Submit() {
                   type="url"
                   placeholder="https://github.com/your-team/project"
                   value={github}
-                  onChange={(e) => setGithub(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setGithub(value);
+                    setGithubError(getUrlError(value, 'GitHub URL'));
+                  }}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30 placeholder-gray-300"
                 />
+                {githubError && <p className="mt-1 text-xs text-red-600">{githubError}</p>}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
@@ -181,9 +231,14 @@ export default function Submit() {
                   type="url"
                   placeholder="https://slides.example.com/your-presentation"
                   value={slides}
-                  onChange={(e) => setSlides(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSlides(value);
+                    setSlidesError(getUrlError(value, '발표 자료 URL'));
+                  }}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30 placeholder-gray-300"
                 />
+                {slidesError && <p className="mt-1 text-xs text-red-600">{slidesError}</p>}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">

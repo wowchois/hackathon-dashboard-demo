@@ -11,6 +11,23 @@
 
 import { supabase } from '../lib/supabase';
 
+function normalizeHttpsUrl(value: string, fieldName: string): string {
+  const trimmed = value.trim();
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new Error(`${fieldName} must be a valid URL.`);
+  }
+
+  if (parsed.protocol !== 'https:') {
+    throw new Error(`${fieldName} must use https.`);
+  }
+
+  return parsed.toString();
+}
+
 export interface Submission {
   id: string;
   teamId: string;
@@ -63,13 +80,16 @@ export async function apiUpsertSubmission(
   teamId: string,
   payload: { githubUrl: string; slidesUrl: string; description: string }
 ): Promise<void> {
+  const githubUrl = normalizeHttpsUrl(payload.githubUrl, 'GitHub URL');
+  const slidesUrl = normalizeHttpsUrl(payload.slidesUrl, 'Slides URL');
+
   const { error } = await supabase
     .from('submissions')
     .upsert(
       {
         team_id: teamId,
-        github_url: payload.githubUrl,
-        slides_url: payload.slidesUrl,
+        github_url: githubUrl,
+        slides_url: slidesUrl,
         description: payload.description,
         submitted_at: new Date().toISOString(),
       },
