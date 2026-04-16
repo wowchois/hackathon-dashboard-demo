@@ -643,13 +643,16 @@ export default function Participants() {
             members: [...tAssignment.selectedParticipantIds],
           },
         ]);
-        setOptimisticParticipants((prev) =>
-          prev.map((participant) =>
-            tAssignment.selectedParticipantIds.includes(participant.id)
-              ? { ...participant, team: createdTeam.id }
-              : participant
-          )
-        );
+        setOptimisticParticipants((prev) => {
+          // prev에 없는 참가자(base 데이터에만 있는)도 업데이트해야 하므로
+          // displayParticipants 기준으로 Map을 구성한 뒤 덮어씀
+          const updated = new Map(prev.map((p) => [p.id, p]));
+          for (const id of tAssignment.selectedParticipantIds) {
+            const base = displayParticipants.find((p) => p.id === id);
+            if (base) updated.set(id, { ...base, team: createdTeam.id });
+          }
+          return Array.from(updated.values());
+        });
       } else if (tModal?.mode === 'edit') {
         const previousMemberIds = displayParticipants
           .filter((participant) => participant.team === tModal.id)
