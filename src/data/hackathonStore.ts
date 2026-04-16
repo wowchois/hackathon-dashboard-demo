@@ -172,9 +172,12 @@ export async function autoMatch(options: AutoMatchOptions): Promise<AutoMatchRes
   }
 
   // Supabase에 배정 결과 저장
+  // 팀 배정은 RLS 우회를 위해 Edge Function 경유 (service_role)
+  // userId 없이 team_id만 업데이트하므로 userId는 undefined 전달
+  const participantMap = new Map(participants.map((p) => [p.id, p]));
   await Promise.all(
     assigned.map(({ participantId, teamId }) =>
-      apiUpdateParticipant(participantId, { team: teamId })
+      apiUpdateParticipantWithAuth(participantId, participantMap.get(participantId)?.userId, { team: teamId })
     )
   );
 
