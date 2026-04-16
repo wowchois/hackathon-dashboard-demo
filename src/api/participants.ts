@@ -76,19 +76,21 @@ export async function apiAddParticipant(p: Omit<Participant, 'id'>): Promise<Par
 // Edge Function으로 auth user + participant 동시 생성 (admin 전용)
 export async function apiCreateParticipantWithAuth(
   p: Omit<Participant, 'id'>,
-  password: string
+  password?: string
 ): Promise<Participant> {
+  const body: Record<string, unknown> = {
+    action: 'create',
+    name: p.name,
+    email: p.email,
+    department: p.department,
+    position: p.position,
+    team_id: p.team || null,
+    status: p.status,
+  };
+  // password 미제공 시 Edge Function이 IMPORT_DEFAULT_PASSWORD 환경변수 사용
+  if (password) body.password = password;
   const { data, error } = await supabase.functions.invoke('participant-admin', {
-    body: {
-      action: 'create',
-      name: p.name,
-      email: p.email,
-      password,
-      department: p.department,
-      position: p.position,
-      team_id: p.team || null,
-      status: p.status,
-    },
+    body,
     headers: await edgeFnHeaders(),
   });
   if (error) await throwFromInvokeError(error);
@@ -176,6 +178,16 @@ export async function apiFetchParticipantByUserId(userId: string): Promise<Parti
     .single();
   if (error) return null;
   return fromDB(data as DBParticipant);
+}
+
+// 비밀번호 초기화 (IMPORT_DEFAULT_PASSWORD + must_change_password 플래그)
+export async function apiResetParticipantPassword(userId: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('participant-admin', {
+    body: { action: 'reset-password', user_id: userId },
+    headers: await edgeFnHeaders(),
+  });
+  if (error) await throwFromInvokeError(error);
+  if (data?.error) throw new Error(data.error);
 }
 
 // 레거시 참가자에 user_id 연결

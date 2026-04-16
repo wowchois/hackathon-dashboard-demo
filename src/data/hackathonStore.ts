@@ -56,7 +56,7 @@ export async function addParticipant(data: Omit<Participant, 'id'>): Promise<Par
 // auth user + participant 동시 생성 (임시 비밀번호 방식)
 export async function createParticipantWithAuth(
   data: Omit<Participant, 'id'>,
-  password: string
+  password?: string
 ): Promise<Participant> {
   return apiCreateParticipantWithAuth(data, password);
 }
@@ -123,9 +123,7 @@ export async function autoMatch(options: AutoMatchOptions): Promise<AutoMatchRes
   if (candidates.length === 0) return { matched: 0, unmatched: 0, assignments: [] };
 
   const availableTeams = teamRows.filter((t) => !t.locked);
-  if (availableTeams.length === 0) {
-    return { matched: 0, unmatched: candidates.length, assignments: [] };
-  }
+  if (availableTeams.length === 0) return { matched: 0, unmatched: candidates.length, assignments: [] };
 
   // 현재 팀별 배정 인원 추적
   const teamAssignments = new Map<string, Participant[]>();
