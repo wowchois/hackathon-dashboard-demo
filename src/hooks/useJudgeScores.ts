@@ -18,11 +18,12 @@ function mapJudgeScores(
         judgeName: existing.judge_name || judgeName,
         teamId: existing.team_id,
         creativity: existing.creativity,
+        practicality: existing.practicality,
         completion: existing.completion,
         presentation: existing.presentation,
       };
     }
-    return { judgeId, judgeName, teamId: team.id, creativity: 0, completion: 0, presentation: 0 };
+    return { judgeId, judgeName, teamId: team.id, creativity: 0, practicality: 0, completion: 0, presentation: 0 };
   });
 }
 

@@ -12,6 +12,7 @@ export interface DBScore {
   judge_name: string;
   team_id: string;
   creativity: number;
+  practicality: number;
   completion: number;
   presentation: number;
   updated_at: string;
@@ -23,6 +24,7 @@ function fromDB(row: DBScore): JudgeScore {
     judgeName: row.judge_name ?? '',
     teamId: row.team_id,
     creativity: row.creativity ?? 0,
+    practicality: row.practicality ?? 0,
     completion: row.completion ?? 0,
     presentation: row.presentation ?? 0,
   };
@@ -50,7 +52,7 @@ export async function apiUpsertScore(
   judgeId: string,
   judgeName: string,
   teamId: string,
-  scores: { creativity: number; completion: number; presentation: number }
+  scores: { creativity: number; practicality: number; completion: number; presentation: number }
 ): Promise<void> {
   const { error } = await supabase.from('scores').upsert(
     {

@@ -12,14 +12,14 @@ import {
 } from '../../data/scoreStore';
 import { ArrowLeft, Save, CheckCircle2 } from 'lucide-react';
 
-type TeamDraft = { creativity: number; completion: number; presentation: number };
+type TeamDraft = { creativity: number; practicality: number; completion: number; presentation: number };
 type DraftScores = Record<string, TeamDraft>;
 
 function buildDraft(scores: JudgeScore[]): DraftScores {
   return Object.fromEntries(
     scores.map((s) => [
       s.teamId,
-      { creativity: s.creativity, completion: s.completion, presentation: s.presentation },
+      { creativity: s.creativity, practicality: s.practicality, completion: s.completion, presentation: s.presentation },
     ])
   );
 }
@@ -47,7 +47,7 @@ export default function ScoreInput() {
 
   const setField = (
     teamId: string,
-    field: 'creativity' | 'completion' | 'presentation',
+    field: 'creativity' | 'practicality' | 'completion' | 'presentation',
     raw: string
   ) => {
     const max = SCORE_CRITERIA.find((c) => c.key === field)!.max;
@@ -56,7 +56,7 @@ export default function ScoreInput() {
       ...prev,
       [teamId]: {
         ...(prev[teamId] ??
-          effectiveDraft[teamId] ?? { creativity: 0, completion: 0, presentation: 0 }),
+          effectiveDraft[teamId] ?? { creativity: 0, practicality: 0, completion: 0, presentation: 0 }),
         [field]: val,
       },
     }));
@@ -68,7 +68,7 @@ export default function ScoreInput() {
   };
 
   const handleSave = async (teamId: string) => {
-    const d = effectiveDraft[teamId] ?? { creativity: 0, completion: 0, presentation: 0 };
+    const d = effectiveDraft[teamId] ?? { creativity: 0, practicality: 0, completion: 0, presentation: 0 };
     try {
       await updateScore(judgeId, judgeName, teamId, d);
       const refreshed = await refetchJudgeScores();
@@ -83,7 +83,7 @@ export default function ScoreInput() {
     try {
       await Promise.all(
         teams.map((t) => {
-          const d = effectiveDraft[t.id] ?? { creativity: 0, completion: 0, presentation: 0 };
+          const d = effectiveDraft[t.id] ?? { creativity: 0, practicality: 0, completion: 0, presentation: 0 };
           return updateScore(judgeId, judgeName, t.id, d);
         })
       );
@@ -96,16 +96,17 @@ export default function ScoreInput() {
   };
 
   const getTotal = (teamId: string) => {
-    const d = effectiveDraft[teamId] ?? { creativity: 0, completion: 0, presentation: 0 };
-    return d.creativity + d.completion + d.presentation;
+    const d = effectiveDraft[teamId] ?? { creativity: 0, practicality: 0, completion: 0, presentation: 0 };
+    return d.creativity + d.practicality + d.completion + d.presentation;
   };
 
   const isChanged = (teamId: string) => {
     const original = judgeScores.find((s) => s.teamId === teamId);
     if (!original) return true;
-    const d = effectiveDraft[teamId] ?? { creativity: 0, completion: 0, presentation: 0 };
+    const d = effectiveDraft[teamId] ?? { creativity: 0, practicality: 0, completion: 0, presentation: 0 };
     return (
       d.creativity !== original.creativity ||
+      d.practicality !== original.practicality ||
       d.completion !== original.completion ||
       d.presentation !== original.presentation
     );
@@ -150,7 +151,7 @@ export default function ScoreInput() {
       )}
 
       {/* ── 평가 기준 안내 ── */}
-      <div className="grid grid-cols-3 gap-2 mb-6">
+      <div className="grid grid-cols-4 gap-2 mb-6">
         {SCORE_CRITERIA.map((c) => (
           <div key={c.key} className="bg-gray-50 rounded-xl p-3 text-center border border-gray-100">
             <p className="text-lg font-bold text-gray-700">{c.max}점</p>
@@ -179,7 +180,7 @@ export default function ScoreInput() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {teams.map((team) => {
-                  const d = effectiveDraft[team.id] ?? { creativity: 0, completion: 0, presentation: 0 };
+                  const d = effectiveDraft[team.id] ?? { creativity: 0, practicality: 0, completion: 0, presentation: 0 };
                   const total = getTotal(team.id);
                   const isSaved = saved.has(team.id);
                   const changed = isChanged(team.id);

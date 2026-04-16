@@ -12,23 +12,25 @@ async function loadAggregated(): Promise<AggregatedScore[]> {
 
   return teams.map((team) => {
     const entered = allScores.filter(
-      (s) => s.teamId === team.id && (s.creativity > 0 || s.completion > 0 || s.presentation > 0)
+      (s) => s.teamId === team.id && (s.creativity > 0 || s.practicality > 0 || s.completion > 0 || s.presentation > 0)
     );
     if (entered.length === 0) {
-      return { teamId: team.id, creativity: 0, completion: 0, presentation: 0, total: 0, judgeCount: 0 };
+      return { teamId: team.id, creativity: 0, practicality: 0, completion: 0, presentation: 0, total: 0, judgeCount: 0 };
     }
-    const avg = (key: 'creativity' | 'completion' | 'presentation') =>
+    const avg = (key: 'creativity' | 'practicality' | 'completion' | 'presentation') =>
       Math.round(entered.reduce((sum, s) => sum + s[key], 0) / entered.length);
 
     const creativity = avg('creativity');
+    const practicality = avg('practicality');
     const completion = avg('completion');
     const presentation = avg('presentation');
     return {
       teamId: team.id,
       creativity,
+      practicality,
       completion,
       presentation,
-      total: creativity + completion + presentation,
+      total: creativity + practicality + completion + presentation,
       judgeCount: entered.length,
     };
   });

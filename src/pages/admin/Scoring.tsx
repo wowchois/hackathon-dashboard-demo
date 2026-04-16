@@ -57,12 +57,13 @@ export default function Scoring() {
       </div>
 
       {/* ── 평가 항목 안내 ── */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-4 gap-3 mb-6">
         {SCORE_CRITERIA.map((c) => {
           const colorMap = {
-            creativity:   { text: 'text-[#fcaf17]', bg: 'bg-[#fcaf17]/10' },
-            completion:   { text: 'text-[#80766b]', bg: 'bg-[#80766b]/10' },
-            presentation: { text: 'text-green-600', bg: 'bg-green-50' },
+            creativity:   { text: 'text-[#fcaf17]',  bg: 'bg-[#fcaf17]/10' },
+            practicality: { text: 'text-blue-600',   bg: 'bg-blue-50' },
+            completion:   { text: 'text-[#80766b]',  bg: 'bg-[#80766b]/10' },
+            presentation: { text: 'text-green-600',  bg: 'bg-green-50' },
           } as const;
           const color = colorMap[c.key];
           return (
@@ -87,8 +88,9 @@ export default function Scoring() {
                   <th className="pb-3 pr-4 text-left text-gray-400">팀명</th>
                   {SCORE_CRITERIA.map((c) => (
                     <th key={c.key} className={`pb-3 pr-4 text-right ${
-                      c.key === 'creativity' ? 'text-[#fcaf17]' :
-                      c.key === 'completion' ? 'text-[#80766b]' : 'text-green-500'
+                      c.key === 'creativity'   ? 'text-[#fcaf17]' :
+                      c.key === 'practicality' ? 'text-blue-500' :
+                      c.key === 'completion'   ? 'text-[#80766b]' : 'text-green-500'
                     }`}>
                       {c.label}
                     </th>
@@ -118,6 +120,9 @@ export default function Scoring() {
                         <td className="py-3.5 pr-4 font-medium text-gray-800">{row.team!.name}</td>
                         <td className="py-3.5 pr-4 text-right text-[#fcaf17] font-medium">
                           {row.creativity || <span className="text-gray-300">-</span>}
+                        </td>
+                        <td className="py-3.5 pr-4 text-right text-blue-600 font-medium">
+                          {row.practicality || <span className="text-gray-300">-</span>}
                         </td>
                         <td className="py-3.5 pr-4 text-right text-[#80766b] font-medium">
                           {row.completion || <span className="text-gray-300">-</span>}
@@ -153,12 +158,12 @@ export default function Scoring() {
                       {/* 심사위원별 상세 점수 */}
                       {isExpanded && (
                         <tr key={`${row.teamId}-detail`} className="bg-gray-50">
-                          <td colSpan={8} className="px-4 py-3">
+                          <td colSpan={9} className="px-4 py-3">
                             <p className="text-xs font-medium text-gray-500 mb-2">심사위원별 점수</p>
                             <div className="grid grid-cols-3 gap-2">
                               {judges.map((judge) => {
                                 const js = teamJudgeScores.find((s) => s.judgeId === judge.id);
-                                const hasScore = js && (js.creativity > 0 || js.completion > 0 || js.presentation > 0);
+                                const hasScore = js && (js.creativity > 0 || js.practicality > 0 || js.completion > 0 || js.presentation > 0);
                                 return (
                                   <div key={judge.id} className={`rounded-lg p-3 border text-xs ${hasScore ? 'bg-white border-gray-200' : 'bg-gray-100 border-gray-100'}`}>
                                     <p className={`font-medium mb-1.5 ${hasScore ? 'text-gray-700' : 'text-gray-400'}`}>
@@ -166,11 +171,12 @@ export default function Scoring() {
                                     </p>
                                     {hasScore && js ? (
                                       <div className="space-y-0.5 text-gray-500">
-                                        <p>창의성 <span className="text-[#fcaf17] font-semibold">{js.creativity}</span></p>
+                                        <p>창의성/독창성 <span className="text-[#fcaf17] font-semibold">{js.creativity}</span></p>
+                                        <p>실용성 <span className="text-blue-600 font-semibold">{js.practicality}</span></p>
                                         <p>완성도 <span className="text-[#80766b] font-semibold">{js.completion}</span></p>
-                                        <p>발표력 <span className="text-green-600 font-semibold">{js.presentation}</span></p>
+                                        <p>발표 <span className="text-green-600 font-semibold">{js.presentation}</span></p>
                                         <p className="border-t border-gray-100 pt-1 mt-1 font-medium text-gray-700">
-                                          합계 {js.creativity + js.completion + js.presentation}
+                                          합계 {js.creativity + js.practicality + js.completion + js.presentation}
                                         </p>
                                       </div>
                                     ) : (
@@ -223,10 +229,14 @@ export default function Scoring() {
                 </div>
 
                 {row.total > 0 ? (
-                  <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="grid grid-cols-4 gap-2 text-center">
                     <div className="bg-[#fcaf17]/10 rounded-lg py-2">
                       <p className="text-[#fcaf17] font-bold text-lg">{row.creativity}</p>
                       <p className="text-gray-400 text-xs mt-0.5">창의성</p>
+                    </div>
+                    <div className="bg-blue-50 rounded-lg py-2">
+                      <p className="text-blue-600 font-bold text-lg">{row.practicality}</p>
+                      <p className="text-gray-400 text-xs mt-0.5">실용성</p>
                     </div>
                     <div className="bg-[#80766b]/10 rounded-lg py-2">
                       <p className="text-[#80766b] font-bold text-lg">{row.completion}</p>
@@ -234,7 +244,7 @@ export default function Scoring() {
                     </div>
                     <div className="bg-green-50 rounded-lg py-2">
                       <p className="text-green-600 font-bold text-lg">{row.presentation}</p>
-                      <p className="text-gray-400 text-xs mt-0.5">발표력</p>
+                      <p className="text-gray-400 text-xs mt-0.5">발표</p>
                     </div>
                   </div>
                 ) : (
@@ -255,7 +265,7 @@ export default function Scoring() {
                   <div className="space-y-2">
                     {judges.map((judge) => {
                       const js = teamJudgeScores.find((s) => s.judgeId === judge.id);
-                      const hasScore = js && (js.creativity > 0 || js.completion > 0 || js.presentation > 0);
+                      const hasScore = js && (js.creativity > 0 || js.practicality > 0 || js.completion > 0 || js.presentation > 0);
                       return (
                         <div key={judge.id} className="flex items-center justify-between text-xs">
                           <span className={hasScore ? 'text-gray-700 font-medium' : 'text-gray-400'}>{judge.name}</span>
@@ -263,11 +273,13 @@ export default function Scoring() {
                             <span className="text-gray-500">
                               <span className="text-[#fcaf17]">{js.creativity}</span>
                               {' + '}
+                              <span className="text-blue-600">{js.practicality}</span>
+                              {' + '}
                               <span className="text-[#80766b]">{js.completion}</span>
                               {' + '}
                               <span className="text-green-600">{js.presentation}</span>
                               {' = '}
-                              <span className="font-semibold text-gray-700">{js.creativity + js.completion + js.presentation}</span>
+                              <span className="font-semibold text-gray-700">{js.creativity + js.practicality + js.completion + js.presentation}</span>
                             </span>
                           ) : (
                             <span className="text-gray-400">미입력</span>
@@ -314,7 +326,7 @@ export default function Scoring() {
           })}
         </div>
         <p className="text-xs text-gray-400 mt-4 text-right">
-          만점: 창의성 {SCORE_CRITERIA[0].max} + 완성도 {SCORE_CRITERIA[1].max} + 발표력 {SCORE_CRITERIA[2].max} = {MAX_SCORE}점 (심사위원 평균)
+          만점: 창의성/독창성 {SCORE_CRITERIA[0].max} + 실용성 {SCORE_CRITERIA[1].max} + 완성도 {SCORE_CRITERIA[2].max} + 발표 {SCORE_CRITERIA[3].max} = {MAX_SCORE}점 (심사위원 평균)
         </p>
       </Card>
     </AdminLayout>
