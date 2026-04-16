@@ -42,6 +42,7 @@ export interface AutoMatchOptions {
 export interface AutoMatchResult {
   matched: number;
   unmatched: number;
+  assignments: { participantId: string; teamId: string }[];
 }
 
 const LEADER_POSITIONS = ['과장', '차장', '부장', '팀장', '수석'];
@@ -181,5 +182,5 @@ export async function autoMatch(options: AutoMatchOptions): Promise<AutoMatchRes
     )
   );
 
-  return { matched: assigned.length, unmatched: candidates.length - assigned.length };
+  return { matched: assigned.length, unmatched: candidates.length - assigned.length, assignments: assigned };
 }

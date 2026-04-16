@@ -754,6 +754,18 @@ export default function Participants() {
   const handleAutoMatch = async () => {
     try {
       const result = await autoMatch(matchOptions);
+      // 배정 결과를 즉시 UI에 반영
+      if (result.assignments.length > 0) {
+        const assignMap = new Map(result.assignments.map(({ participantId, teamId }) => [participantId, teamId]));
+        setOptimisticParticipants((prev) => {
+          const updated = new Map(prev.map((p) => [p.id, p]));
+          for (const [participantId, teamId] of assignMap) {
+            const base = displayParticipants.find((p) => p.id === participantId);
+            if (base) updated.set(participantId, { ...base, team: teamId });
+          }
+          return Array.from(updated.values());
+        });
+      }
       setToast({
         visible: true,
         message: `${result.matched}명 자동 배정 완료, ${result.unmatched}명 미배정`,
