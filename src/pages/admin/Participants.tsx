@@ -843,7 +843,7 @@ export default function Participants() {
                   </div>
                 </div>
 
-                <div className="h-[420px] overflow-y-auto rounded-xl border border-gray-100">
+                <div className="h-[320px] overflow-y-auto rounded-xl border border-gray-100">
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-gray-50">
                       <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-400">
@@ -882,13 +882,29 @@ export default function Participants() {
               </div>
 
               <div className="flex h-full min-h-0 flex-col rounded-2xl border border-gray-200 p-4">
-                <div className="mb-4 rounded-2xl bg-[#80766b]/8 px-4 py-3">
+                <div className="mb-3 rounded-2xl bg-[#80766b]/8 px-4 py-3">
                   <p className="text-xs font-medium text-gray-500">
                     {tModal.mode === 'add' ? '자동 생성 팀 번호' : '현재 팀'}
                   </p>
                   <p className="mt-1 text-2xl font-bold text-[#80766b]">
                     {tModal.mode === 'add' ? getNextTeamLabel(displayTeams) : tForm.name}
                   </p>
+                </div>
+
+                <div className="mb-4 flex gap-2">
+                  <button
+                    onClick={closeTModal}
+                    className="flex-1 rounded-xl bg-gray-100 py-2.5 text-sm text-gray-600 transition-colors hover:bg-gray-200"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleTeamSubmit}
+                    disabled={!tForm.name.trim() || savingTeam}
+                    className="flex-1 rounded-xl bg-[#80766b] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#6e645a] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {savingTeam ? '저장 중...' : tModal.mode === 'add' ? '팀 생성' : '팀 저장'}
+                  </button>
                 </div>
 
                 <div className="flex min-h-0 flex-1 flex-col">
@@ -915,7 +931,7 @@ export default function Participants() {
                         onChange={(event) =>
                           setTForm((prev) => ({ ...prev, idea: event.target.value }))
                         }
-                        rows={4}
+                        rows={3}
                         className="w-full resize-none rounded-xl border border-gray-200 px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#80766b]/30"
                       />
                     </FormField>
@@ -956,22 +972,6 @@ export default function Participants() {
                       )}
                     </div>
                   </div>
-                </div>
-
-                <div className="mt-6 flex gap-2 pt-2">
-                  <button
-                    onClick={closeTModal}
-                    className="flex-1 rounded-xl bg-gray-100 py-2.5 text-sm text-gray-600 transition-colors hover:bg-gray-200"
-                  >
-                    취소
-                  </button>
-                  <button
-                    onClick={handleTeamSubmit}
-                    disabled={!tForm.name.trim() || savingTeam}
-                    className="flex-1 rounded-xl bg-[#80766b] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#6e645a] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {savingTeam ? '저장 중...' : tModal.mode === 'add' ? '팀 생성' : '팀 저장'}
-                  </button>
                 </div>
               </div>
             </div>
