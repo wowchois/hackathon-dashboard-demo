@@ -7,6 +7,7 @@ import {
   apiAddParticipant,
   apiCreateParticipantWithAuth,
   apiUpdateParticipant,
+  apiUpdateParticipantWithAuth,
   apiDeleteParticipant,
   apiDeleteParticipantWithAuth,
 } from '../api/participants';
@@ -59,11 +60,13 @@ export async function createParticipantWithAuth(
   return apiCreateParticipantWithAuth(data, password);
 }
 
+// userId가 있으면 Edge Function으로 auth user metadata도 함께 수정
 export async function updateParticipant(
   id: string,
-  partial: Partial<Omit<Participant, 'id'>>
+  partial: Partial<Omit<Participant, 'id'>>,
+  userId?: string
 ): Promise<void> {
-  await apiUpdateParticipant(id, partial);
+  await apiUpdateParticipantWithAuth(id, userId, partial);
 }
 
 export async function deleteParticipant(id: string, userId?: string): Promise<void> {

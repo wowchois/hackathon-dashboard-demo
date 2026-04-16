@@ -452,12 +452,17 @@ export default function Participants() {
             const createdParticipant = await createParticipantWithAuth(payload, draft.password!);
             setOptimisticParticipants((prev) => [...prev, createdParticipant]);
         } else if (draft.id) {
-          await updateParticipant(draft.id, payload);
-          setOptimisticParticipants((prev) =>
-            prev.map((participant) =>
-              participant.id === draft.id ? { ...participant, ...payload } : participant
-            )
-          );
+          const original = displayParticipants.find((p) => p.id === draft.id);
+          await updateParticipant(draft.id, payload, original?.userId);
+          if (original) {
+            const updated: Participant = { ...original, ...payload };
+            setOptimisticParticipants((prev) => {
+              const exists = prev.some((p) => p.id === draft.id);
+              return exists
+                ? prev.map((p) => (p.id === draft.id ? updated : p))
+                : [...prev, updated];
+            });
+          }
         }
       } catch {
         failedKeys.add(draft.key);

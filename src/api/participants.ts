@@ -88,6 +88,32 @@ export async function apiUpdateParticipant(
   if (error) throw error;
 }
 
+// Edge Function으로 participant + auth user metadata 동시 수정 (auth 연결된 참가자)
+// userId 없으면 participants 테이블만 직접 업데이트
+export async function apiUpdateParticipantWithAuth(
+  participantId: string,
+  userId: string | undefined,
+  partial: Partial<Omit<Participant, 'id'>>
+): Promise<void> {
+  if (userId) {
+    const body: Record<string, unknown> = {
+      action: 'update',
+      participant_id: participantId,
+      user_id: userId,
+    };
+    if ('name' in partial) body.name = partial.name;
+    if ('team' in partial) body.team_id = partial.team || null;
+    if ('department' in partial) body.department = partial.department;
+    if ('position' in partial) body.position = partial.position;
+    if ('status' in partial) body.status = partial.status;
+    const { data, error } = await supabase.functions.invoke('participant-admin', { body });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+  } else {
+    await apiUpdateParticipant(participantId, partial);
+  }
+}
+
 export async function apiDeleteParticipant(id: string): Promise<void> {
   const { error } = await supabase.from('participants').delete().eq('id', id);
   if (error) throw error;

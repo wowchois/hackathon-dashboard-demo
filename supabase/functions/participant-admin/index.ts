@@ -77,6 +77,36 @@ serve(async (req) => {
     return json({ participant });
   }
 
+  // ── 참가자 수정 ──────────────────────────────────────────────
+  if (action === 'update') {
+    const { participant_id, user_id, name, team_id, department, position, status } = body;
+
+    // 1. participants 행 업데이트
+    const patch: Record<string, unknown> = {};
+    if (name !== undefined) patch.name = name;
+    if (team_id !== undefined) patch.team_id = team_id;
+    if (department !== undefined) patch.department = department;
+    if (position !== undefined) patch.position = position;
+    if (status !== undefined) patch.status = status;
+
+    const { error: dbError } = await admin
+      .from('participants')
+      .update(patch)
+      .eq('id', participant_id);
+
+    if (dbError) return json({ error: dbError.message }, 400);
+
+    // 2. auth user metadata 업데이트 (이름 변경 시)
+    if (user_id && name !== undefined) {
+      const { error: authError } = await admin.auth.admin.updateUserById(user_id, {
+        user_metadata: { name },
+      });
+      if (authError) return json({ error: authError.message }, 400);
+    }
+
+    return json({ success: true });
+  }
+
   // ── 참가자 삭제 ──────────────────────────────────────────────
   if (action === 'delete') {
     const { participant_id, user_id } = body;
