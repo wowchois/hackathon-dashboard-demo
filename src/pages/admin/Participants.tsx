@@ -87,7 +87,7 @@ const EMPTY_TEAM_ASSIGNMENT: TeamAssignmentState = {
   checkedCandidateIds: [],
 };
 
-const MAX_NEW_ROWS = 50;
+const MAX_NEW_ROWS = 60;
 
 function Toast({ toast, onHide }: { toast: ToastState; onHide: () => void }) {
   useEffect(() => {
