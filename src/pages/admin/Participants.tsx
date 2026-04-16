@@ -795,16 +795,25 @@ export default function Participants() {
                     : '팀 정보와 팀원 구성을 같은 화면에서 수정합니다.'}
                 </p>
               </div>
-              <button
-                onClick={closeTModal}
-                className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleTeamSubmit}
+                  disabled={!tForm.name.trim() || savingTeam}
+                  className="hidden rounded-xl bg-[#80766b] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#6e645a] disabled:cursor-not-allowed disabled:opacity-40 lg:block"
+                >
+                  {savingTeam ? '저장 중...' : tModal.mode === 'add' ? '팀 생성' : '팀 저장'}
+                </button>
+                <button
+                  onClick={closeTModal}
+                  className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             <div className="hidden min-h-0 flex-1 overflow-hidden lg:grid lg:grid-cols-[1.1fr_0.9fr] lg:gap-5">
-              <div className="min-h-0 rounded-2xl border border-gray-200 p-4">
+              <div className="h-full min-h-0 rounded-2xl border border-gray-200 p-4">
                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="relative w-full max-w-sm">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -889,22 +898,6 @@ export default function Participants() {
                   <p className="mt-1 text-2xl font-bold text-[#80766b]">
                     {tModal.mode === 'add' ? getNextTeamLabel(displayTeams) : tForm.name}
                   </p>
-                </div>
-
-                <div className="mb-4 flex gap-2">
-                  <button
-                    onClick={closeTModal}
-                    className="flex-1 rounded-xl bg-gray-100 py-2.5 text-sm text-gray-600 transition-colors hover:bg-gray-200"
-                  >
-                    취소
-                  </button>
-                  <button
-                    onClick={handleTeamSubmit}
-                    disabled={!tForm.name.trim() || savingTeam}
-                    className="flex-1 rounded-xl bg-[#80766b] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#6e645a] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {savingTeam ? '저장 중...' : tModal.mode === 'add' ? '팀 생성' : '팀 저장'}
-                  </button>
                 </div>
 
                 <div className="flex min-h-0 flex-1 flex-col">
