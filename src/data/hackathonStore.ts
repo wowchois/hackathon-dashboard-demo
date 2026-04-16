@@ -120,10 +120,12 @@ export async function autoMatch(options: AutoMatchOptions): Promise<AutoMatchRes
 
   // 미배정 + 승인된 참가자
   const candidates = participants.filter((p) => p.status === 'approved' && p.team === '');
-  if (candidates.length === 0) return { matched: 0, unmatched: 0 };
+  if (candidates.length === 0) return { matched: 0, unmatched: 0, assignments: [] };
 
   const availableTeams = teamRows.filter((t) => !t.locked);
-  if (availableTeams.length === 0) return { matched: 0, unmatched: candidates.length };
+  if (availableTeams.length === 0) {
+    return { matched: 0, unmatched: candidates.length, assignments: [] };
+  }
 
   // 현재 팀별 배정 인원 추적
   const teamAssignments = new Map<string, Participant[]>();
