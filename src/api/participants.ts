@@ -76,19 +76,21 @@ export async function apiAddParticipant(p: Omit<Participant, 'id'>): Promise<Par
 // Edge Function으로 auth user + participant 동시 생성 (admin 전용)
 export async function apiCreateParticipantWithAuth(
   p: Omit<Participant, 'id'>,
-  password: string
+  password?: string
 ): Promise<Participant> {
+  const body: Record<string, unknown> = {
+    action: 'create',
+    name: p.name,
+    email: p.email,
+    department: p.department,
+    position: p.position,
+    team_id: p.team || null,
+    status: p.status,
+  };
+  // password 미제공 시 Edge Function이 IMPORT_DEFAULT_PASSWORD 환경변수 사용
+  if (password) body.password = password;
   const { data, error } = await supabase.functions.invoke('participant-admin', {
-    body: {
-      action: 'create',
-      name: p.name,
-      email: p.email,
-      password,
-      department: p.department,
-      position: p.position,
-      team_id: p.team || null,
-      status: p.status,
-    },
+    body,
     headers: await edgeFnHeaders(),
   });
   if (error) await throwFromInvokeError(error);

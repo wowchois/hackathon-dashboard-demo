@@ -65,6 +65,7 @@ interface ParticipantDraftRow {
   teamLocked: boolean;
   password?: string;      // 신규 행 전용
   passwordError?: string; // 신규 행 전용
+  isImport?: boolean;     // 엑셀 일괄 등록 행 — Edge Function이 기본 비밀번호 사용
 }
 
 const EMPTY_PARTICIPANT_FORM: ParticipantFormState = {
@@ -157,8 +158,6 @@ function createDraftRow(index: number): ParticipantDraftRow {
   };
 }
 
-const EXCEL_IMPORT_PASSWORD = 'kbdata1';
-
 async function parseExcelFile(
   file: File,
   startIndex: number,
@@ -182,7 +181,8 @@ async function parseExcelFile(
     },
     errors: {},
     teamLocked: false,
-    password: EXCEL_IMPORT_PASSWORD,
+    password: '',
+    isImport: true,
   }));
 
   const truncated = Math.max(0, all.length - limit);
@@ -495,9 +495,9 @@ export default function Participants() {
       if (Object.keys(errors).length > 0) hasValidationError = true;
     }
 
-    // 신규 행 비밀번호 검증
+    // 신규 행 비밀번호 검증 (엑셀 import 행은 Edge Function이 기본값 사용 → 스킵)
     const updatedNewRows = newRows.map((draft) => {
-      if (!draft.password?.trim()) {
+      if (!draft.isImport && !draft.password?.trim()) {
         hasValidationError = true;
         return { ...draft, passwordError: '임시 비밀번호를 입력해 주세요.' };
       }

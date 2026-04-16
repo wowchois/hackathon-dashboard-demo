@@ -62,10 +62,15 @@ Deno.serve(async (req: Request) => {
   if (action === "create") {
     const { name, email, password, department, position, team_id, status } = body;
 
+    // password 미제공(엑셀 일괄 등록) 시 서버 환경변수 사용 — 클라이언트에 노출되지 않음
+    const resolvedPassword = (password as string | undefined)?.trim()
+      || Deno.env.get("IMPORT_DEFAULT_PASSWORD");
+    if (!resolvedPassword) return json({ error: "비밀번호가 없고 IMPORT_DEFAULT_PASSWORD 환경변수도 설정되지 않았습니다." }, 500);
+
     // 1. auth user 생성
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
       email: email as string,
-      password: password as string,
+      password: resolvedPassword,
       email_confirm: true,
       app_metadata: { role: "participant" },       // 서버 전용 — 클라이언트 수정 불가
       user_metadata: { name, must_change_password: true },
