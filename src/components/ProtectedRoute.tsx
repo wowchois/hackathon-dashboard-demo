@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '../contexts/useAuth';
 import type { UserRole } from '../contexts/AuthContext';
@@ -17,12 +17,18 @@ export default function ProtectedRoute({
   redirectTo = '/login',
 }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
+  const { pathname } = useLocation();
 
   // 세션 로딩 중 — 빈 화면 (짧은 순간이라 스피너 생략)
   if (loading) return null;
 
   // 미인증
   if (!user) return <Navigate to={redirectTo} replace />;
+
+  // 비밀번호 변경 강제 (최초 로그인)
+  if (user.mustChangePassword && pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
 
   // 역할 체크
   if (roles && !roles.includes(user.role)) {

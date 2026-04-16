@@ -8,6 +8,7 @@ export interface Participant {
   status: 'approved' | 'pending' | 'rejected';
   department: string;
   position: string;
+  userId?: string;   // auth.users.id (신규 등록 참가자만 존재)
 }
 
 export interface Team {

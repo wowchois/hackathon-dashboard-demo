@@ -12,6 +12,7 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   name: string;
+  mustChangePassword: boolean;
 }
 
 interface AuthContextValue {
@@ -35,6 +36,7 @@ function toAuthUser(user: User): AuthUser {
     email: user.email ?? '',
     role: (meta.role as UserRole) ?? 'participant',
     name: (meta.name as string) ?? user.email ?? '',
+    mustChangePassword: (meta.must_change_password as boolean) ?? false,
   };
 }
 

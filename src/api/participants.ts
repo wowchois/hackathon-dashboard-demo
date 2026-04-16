@@ -3,6 +3,7 @@ import type { Participant } from '../data/mockData';
 
 interface DBParticipant {
   id: string;
+  user_id: string | null;
   name: string;
   email: string;
   team_id: string | null;
@@ -20,6 +21,7 @@ function fromDB(row: DBParticipant): Participant {
     department: row.department ?? '',
     position: row.position ?? '',
     status: row.status ?? 'pending',
+    userId: row.user_id ?? undefined,
   };
 }
 
@@ -49,6 +51,28 @@ export async function apiAddParticipant(p: Omit<Participant, 'id'>): Promise<Par
   return fromDB(data as DBParticipant);
 }
 
+// Edge Function으로 auth user + participant 동시 생성 (admin 전용)
+export async function apiCreateParticipantWithAuth(
+  p: Omit<Participant, 'id'>,
+  password: string
+): Promise<Participant> {
+  const { data, error } = await supabase.functions.invoke('participant-admin', {
+    body: {
+      action: 'create',
+      name: p.name,
+      email: p.email,
+      password,
+      department: p.department,
+      position: p.position,
+      team_id: p.team || null,
+      status: p.status,
+    },
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return fromDB(data.participant as DBParticipant);
+}
+
 export async function apiUpdateParticipant(
   id: string,
   partial: Partial<Omit<Participant, 'id'>>
@@ -69,6 +93,22 @@ export async function apiDeleteParticipant(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// Edge Function으로 auth user + participant 동시 삭제 (admin 전용)
+export async function apiDeleteParticipantWithAuth(
+  participantId: string,
+  userId: string
+): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('participant-admin', {
+    body: {
+      action: 'delete',
+      participant_id: participantId,
+      user_id: userId,
+    },
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+}
+
 export async function apiFetchParticipantByEmail(email: string): Promise<Participant | null> {
   const { data, error } = await supabase
     .from('participants')
@@ -77,4 +117,23 @@ export async function apiFetchParticipantByEmail(email: string): Promise<Partici
     .single();
   if (error) return null;
   return fromDB(data as DBParticipant);
+}
+
+export async function apiFetchParticipantByUserId(userId: string): Promise<Participant | null> {
+  const { data, error } = await supabase
+    .from('participants')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+  if (error) return null;
+  return fromDB(data as DBParticipant);
+}
+
+// 레거시 참가자에 user_id 연결
+export async function apiLinkParticipant(participantId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('participants')
+    .update({ user_id: userId })
+    .eq('id', participantId);
+  if (error) throw error;
 }

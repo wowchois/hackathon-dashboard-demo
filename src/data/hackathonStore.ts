@@ -5,8 +5,10 @@
 import {
   apiFetchParticipants,
   apiAddParticipant,
+  apiCreateParticipantWithAuth,
   apiUpdateParticipant,
   apiDeleteParticipant,
+  apiDeleteParticipantWithAuth,
 } from '../api/participants';
 import {
   apiFetchTeams,
@@ -49,6 +51,14 @@ export async function addParticipant(data: Omit<Participant, 'id'>): Promise<Par
   return apiAddParticipant(data);
 }
 
+// auth user + participant 동시 생성 (임시 비밀번호 방식)
+export async function createParticipantWithAuth(
+  data: Omit<Participant, 'id'>,
+  password: string
+): Promise<Participant> {
+  return apiCreateParticipantWithAuth(data, password);
+}
+
 export async function updateParticipant(
   id: string,
   partial: Partial<Omit<Participant, 'id'>>
@@ -56,8 +66,12 @@ export async function updateParticipant(
   await apiUpdateParticipant(id, partial);
 }
 
-export async function deleteParticipant(id: string): Promise<void> {
-  await apiDeleteParticipant(id);
+export async function deleteParticipant(id: string, userId?: string): Promise<void> {
+  if (userId) {
+    await apiDeleteParticipantWithAuth(id, userId);
+  } else {
+    await apiDeleteParticipant(id);
+  }
 }
 
 // ── 팀 mutations ──────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 // Pages
 import Login from './pages/Login';
+import ChangePassword from './pages/ChangePassword';
 // Admin pages
 import Dashboard from './pages/admin/Dashboard';
 import Participants from './pages/admin/Participants';
@@ -27,6 +28,16 @@ export default function App() {
 
           {/* 로그인 */}
           <Route path="/login" element={<Login />} />
+
+          {/* 비밀번호 변경 (최초 로그인) */}
+          <Route
+            path="/change-password"
+            element={
+              <ProtectedRoute>
+                <ChangePassword />
+              </ProtectedRoute>
+            }
+          />
 
           {/* ── 관리자 전용 ─────────────────────────────────────── */}
           <Route

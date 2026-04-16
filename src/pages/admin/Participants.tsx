@@ -15,9 +15,9 @@ import Card from '../../components/ui/Card';
 import { useParticipants } from '../../hooks/useParticipants';
 import { useTeams } from '../../hooks/useTeams';
 import {
-  addParticipant,
   addTeam,
   autoMatch,
+  createParticipantWithAuth,
   deleteParticipant,
   deleteTeam,
   toggleTeamLock,
@@ -61,6 +61,8 @@ interface ParticipantDraftRow {
   form: ParticipantFormState;
   errors: Partial<Record<keyof ParticipantFormState, string>>;
   teamLocked: boolean;
+  password?: string;      // 신규 행 전용
+  passwordError?: string; // 신규 행 전용
 }
 
 const EMPTY_PARTICIPANT_FORM: ParticipantFormState = {
@@ -149,6 +151,7 @@ function createDraftRow(index: number): ParticipantDraftRow {
     form: { ...EMPTY_PARTICIPANT_FORM },
     errors: {},
     teamLocked: false,
+    password: '',
   };
 }
 
@@ -368,6 +371,16 @@ export default function Participants() {
     });
   };
 
+  const updateDraftPassword = (key: string, value: string) => {
+    setNewRows((prev) =>
+      prev.map((draft) =>
+        draft.key === key
+          ? { ...draft, password: value, passwordError: undefined }
+          : draft
+      )
+    );
+  };
+
   const setDraftErrors = (
     key: string,
     errors: Partial<Record<keyof ParticipantFormState, string>>
@@ -406,6 +419,16 @@ export default function Participants() {
       if (Object.keys(errors).length > 0) hasValidationError = true;
     }
 
+    // 신규 행 비밀번호 검증
+    const updatedNewRows = newRows.map((draft) => {
+      if (!draft.password?.trim()) {
+        hasValidationError = true;
+        return { ...draft, passwordError: '임시 비밀번호를 입력해 주세요.' };
+      }
+      return draft;
+    });
+    setNewRows(updatedNewRows);
+
     if (hasValidationError) {
       setToast({ visible: true, message: '필수 항목과 팀 배정 상태를 확인해 주세요.' });
       return;
@@ -426,7 +449,7 @@ export default function Participants() {
 
       try {
         if (draft.mode === 'new') {
-            const createdParticipant = await addParticipant(payload);
+            const createdParticipant = await createParticipantWithAuth(payload, draft.password!);
             setOptimisticParticipants((prev) => [...prev, createdParticipant]);
         } else if (draft.id) {
           await updateParticipant(draft.id, payload);
@@ -469,7 +492,7 @@ export default function Participants() {
     }
 
     try {
-      await deleteParticipant(id);
+      await deleteParticipant(id, participant?.userId);
       cancelDraft(id);
       setOptimisticParticipants((prev) => prev.filter((participantItem) => participantItem.id !== id));
     } catch {
@@ -722,6 +745,7 @@ export default function Participants() {
           onStartEdit={startEditParticipant}
           onDelete={handleDeleteParticipant}
           onDraftChange={updateDraftField}
+          onPasswordChange={updateDraftPassword}
           onCancelDraft={cancelDraft}
           onSaveAll={handleSaveParticipants}
           savingParticipants={savingParticipants}
@@ -1125,6 +1149,7 @@ function ParticipantsTab({
   onStartEdit,
   onDelete,
   onDraftChange,
+  onPasswordChange,
   onCancelDraft,
   onSaveAll,
   savingParticipants,
@@ -1146,6 +1171,7 @@ function ParticipantsTab({
     field: keyof ParticipantFormState,
     value: string
   ) => void;
+  onPasswordChange: (key: string, value: string) => void;
   onCancelDraft: (key: string) => void;
   onSaveAll: () => void;
   savingParticipants: boolean;
@@ -1200,20 +1226,22 @@ function ParticipantsTab({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-[1120px] table-fixed text-sm">
+          <table className="min-w-[1300px] table-fixed text-sm">
             <colgroup>
-              <col style={{ width: 160 }} />
-              <col style={{ width: 300 }} />
+              <col style={{ width: 150 }} />
+              <col style={{ width: 220 }} />
               <col style={{ width: 180 }} />
-              <col style={{ width: 160 }} />
-              <col style={{ width: 140 }} />
-              <col style={{ width: 140 }} />
-              <col style={{ width: 160 }} />
+              <col style={{ width: 170 }} />
+              <col style={{ width: 150 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 170 }} />
             </colgroup>
             <thead>
               <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
                 <th className="pb-3 pr-3">이름</th>
                 <th className="pb-3 pr-3">이메일</th>
+                <th className="pb-3 pr-3">임시 비밀번호 <span className="text-red-400">*</span></th>
                 <th className="pb-3 pr-3">팀</th>
                 <th className="pb-3 pr-3">부서</th>
                 <th className="pb-3 pr-3">직급</th>
@@ -1228,6 +1256,7 @@ function ParticipantsTab({
                   draft={draft}
                   teams={teams}
                   onDraftChange={onDraftChange}
+                  onPasswordChange={onPasswordChange}
                   onCancel={onCancelDraft}
                 />
               ))}
@@ -1241,6 +1270,7 @@ function ParticipantsTab({
                       draft={draft}
                       teams={teams}
                       onDraftChange={onDraftChange}
+                      onPasswordChange={onPasswordChange}
                       onCancel={onCancelDraft}
                     />
                   );
@@ -1251,6 +1281,7 @@ function ParticipantsTab({
                   <tr key={participant.id} className="transition-colors hover:bg-gray-50">
                     <td className="py-3 pr-3 font-medium text-gray-800">{participant.name}</td>
                     <td className="truncate py-3 pr-3 text-gray-500">{participant.email}</td>
+                    <td className="py-3 pr-3 text-gray-300">—</td>
                     <td className="py-3 pr-3 text-gray-500">
                       <span className="flex items-center gap-1">
                         {teamName(participant.team)}
@@ -1298,6 +1329,7 @@ function ParticipantEditableRow({
   draft,
   teams,
   onDraftChange,
+  onPasswordChange,
   onCancel,
 }: {
   draft: ParticipantDraftRow;
@@ -1307,6 +1339,7 @@ function ParticipantEditableRow({
     field: keyof ParticipantFormState,
     value: string
   ) => void;
+  onPasswordChange: (key: string, value: string) => void;
   onCancel: (key: string) => void;
 }) {
   return (
@@ -1331,6 +1364,24 @@ function ParticipantEditableRow({
         />
         {draft.errors.email && (
           <p className="mt-1 text-xs text-red-500">{draft.errors.email}</p>
+        )}
+      </td>
+      <td className="py-3 pr-3">
+        {draft.mode === 'new' ? (
+          <>
+            <input
+              type="password"
+              value={draft.password ?? ''}
+              onChange={(event) => onPasswordChange(draft.key, event.target.value)}
+              className={tableInputClass(!!draft.passwordError)}
+              placeholder="임시 비밀번호"
+            />
+            {draft.passwordError && (
+              <p className="mt-1 text-xs text-red-500">{draft.passwordError}</p>
+            )}
+          </>
+        ) : (
+          <span className="text-gray-300">—</span>
         )}
       </td>
       <td className="py-3 pr-3">
