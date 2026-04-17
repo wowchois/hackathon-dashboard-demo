@@ -8,6 +8,10 @@ import {
   MilestonesNotificationProvider,
   useMilestonesNotification,
 } from '../../contexts/MilestonesNotification';
+import {
+  NoticesNotificationProvider,
+  useNoticesNotification,
+} from '../../contexts/NoticesNotification';
 
 const NAV_ITEMS = [
   { path: '/participant',          label: '내 팀',    icon: Users },
@@ -17,6 +21,7 @@ const NAV_ITEMS = [
 ];
 
 const SCHEDULE_PATH = '/participant/schedule';
+const NOTICES_PATH = '/participant/notices';
 
 function useActiveNav() {
   const { pathname } = useLocation();
@@ -33,7 +38,9 @@ interface ParticipantLayoutProps {
 export default function ParticipantLayout({ children }: ParticipantLayoutProps) {
   return (
     <MilestonesNotificationProvider>
-      <ParticipantLayoutContent>{children}</ParticipantLayoutContent>
+      <NoticesNotificationProvider>
+        <ParticipantLayoutContent>{children}</ParticipantLayoutContent>
+      </NoticesNotificationProvider>
     </MilestonesNotificationProvider>
   );
 }
@@ -46,6 +53,7 @@ function ParticipantLayoutContent({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { team } = useCurrentParticipant();
   const { hasNew } = useMilestonesNotification();
+  const { hasNew: hasNewNotices } = useNoticesNotification();
 
   const handleLogout = async () => {
     await signOut();
@@ -73,7 +81,7 @@ function ParticipantLayoutContent({ children }: { children: ReactNode }) {
           <ul className="space-y-1">
             {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
               const active = isActive(path);
-              const showDot = path === SCHEDULE_PATH && hasNew;
+              const showDot = (path === SCHEDULE_PATH && hasNew) || (path === NOTICES_PATH && hasNewNotices);
               return (
                 <li key={path}>
                   <Link
@@ -145,7 +153,7 @@ function ParticipantLayoutContent({ children }: { children: ReactNode }) {
           <ul className="space-y-1">
             {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
               const active = isActive(path);
-              const showDot = path === SCHEDULE_PATH && hasNew;
+              const showDot = (path === SCHEDULE_PATH && hasNew) || (path === NOTICES_PATH && hasNewNotices);
               return (
                 <li key={path}>
                   <Link
@@ -227,7 +235,7 @@ function ParticipantLayoutContent({ children }: { children: ReactNode }) {
           <ul className="flex">
             {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
               const active = isActive(path);
-              const showDot = path === SCHEDULE_PATH && hasNew;
+              const showDot = (path === SCHEDULE_PATH && hasNew) || (path === NOTICES_PATH && hasNewNotices);
               return (
                 <li key={path} className="flex-1">
                   <Link

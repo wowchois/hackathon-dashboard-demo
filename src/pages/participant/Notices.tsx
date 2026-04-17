@@ -6,7 +6,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 export default function ParticipantNotices() {
   const { data: notices } = useNotices();
   const sorted = [...notices].sort((a, b) => b.date.localeCompare(a.date));
-  const latestDate = sorted[0]?.date;
+  const today = new Date().toISOString().split('T')[0];
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -30,7 +30,7 @@ export default function ParticipantNotices() {
       <div className="space-y-2">
         {sorted.map((notice) => {
           const isOpen = expanded.has(notice.id);
-          const isNew = notice.date === latestDate;
+          const isNew = notice.date === today;
 
           return (
             <div
