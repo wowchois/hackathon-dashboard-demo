@@ -1,22 +1,20 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useMilestones } from '../hooks/useMilestones';
 import { useAuth } from './useAuth';
 import type { Milestone } from '../data/mockData';
 
+const SCHEDULE_PATH = '/participant/schedule';
+
 interface MilestonesNotificationCtx {
-  milestones: Milestone[];
   hasNew: boolean;
-  markAsSeen: () => void;
 }
 
 const MilestonesNotificationContext = createContext<MilestonesNotificationCtx>({
-  milestones: [],
   hasNew: false,
-  markAsSeen: () => {},
 });
 
-// 공개 마일스톤의 내용 변화 감지용 문자열
 function computeFingerprint(ms: Milestone[]): string {
   return ms
     .filter((m) => m.isPublic)
@@ -27,12 +25,13 @@ function computeFingerprint(ms: Milestone[]): string {
 export function MilestonesNotificationProvider({ children }: { children: ReactNode }) {
   const { data: milestones } = useMilestones();
   const { user } = useAuth();
+  const { pathname } = useLocation();
   const storageKey = `milestones_seen_${user?.id ?? ''}`;
   const [hasNew, setHasNew] = useState(false);
   const loadedRef = useRef(false);
 
+  // 마일스톤 변경 시 hasNew 재계산
   useEffect(() => {
-    // 첫 fetch 전 빈 배열일 때는 무시
     if (milestones.length === 0 && !loadedRef.current) return;
     loadedRef.current = true;
     const current = computeFingerprint(milestones);
@@ -40,13 +39,17 @@ export function MilestonesNotificationProvider({ children }: { children: ReactNo
     setHasNew(current !== seen);
   }, [milestones, storageKey]);
 
-  const markAsSeen = useCallback(() => {
-    localStorage.setItem(storageKey, computeFingerprint(milestones));
+  // 일정 페이지 방문 시 자동 읽음 처리
+  useEffect(() => {
+    if (!pathname.startsWith(SCHEDULE_PATH)) return;
+    if (milestones.length === 0) return;
+    const current = computeFingerprint(milestones);
+    localStorage.setItem(storageKey, current);
     setHasNew(false);
-  }, [milestones, storageKey]);
+  }, [pathname, milestones, storageKey]);
 
   return (
-    <MilestonesNotificationContext.Provider value={{ milestones, hasNew, markAsSeen }}>
+    <MilestonesNotificationContext.Provider value={{ hasNew }}>
       {children}
     </MilestonesNotificationContext.Provider>
   );
