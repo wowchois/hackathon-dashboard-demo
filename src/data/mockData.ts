@@ -32,7 +32,9 @@ export interface Milestone {
   id: string;
   title: string;
   date: string;
-  isDone: boolean;
+  description?: string;
+  isPublic: boolean;
+  isDone: boolean; // date < today 로 프론트에서 계산
 }
 
 export interface Notification {
@@ -162,11 +164,11 @@ export const notices: Notice[] = [
 // ─── 마일스톤 (5개: 2개 완료, 3개 예정) ─────────────────────
 
 export const milestones: Milestone[] = [
-  { id: 'm01', title: '참가 신청 마감', date: '2025-04-13', isDone: true },
-  { id: 'm02', title: '팀 아이디어 제출', date: '2025-04-19', isDone: true },
-  { id: 'm03', title: '중간 점검 및 멘토링', date: '2025-04-19', isDone: false },
-  { id: 'm04', title: '최종 결과물 제출', date: '2025-04-20', isDone: false },
-  { id: 'm05', title: '최종 발표 및 시상식', date: '2025-04-20', isDone: false },
+  { id: 'm01', title: '참가 신청 마감',      date: '2025-04-13', isDone: true,  isPublic: true },
+  { id: 'm02', title: '팀 아이디어 제출',    date: '2025-04-19', isDone: true,  isPublic: true },
+  { id: 'm03', title: '중간 점검 및 멘토링', date: '2025-04-19', isDone: false, isPublic: true },
+  { id: 'm04', title: '최종 결과물 제출',    date: '2025-04-20', isDone: false, isPublic: true },
+  { id: 'm05', title: '최종 발표 및 시상식', date: '2025-04-20', isDone: false, isPublic: true },
 ];
 
 // ─── 알림 (8개: 3개 읽음, 5개 안읽음) ───────────────────────
