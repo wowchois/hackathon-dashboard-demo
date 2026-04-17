@@ -6,7 +6,8 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 export default function ParticipantNotices() {
   const { data: notices } = useNotices();
   const sorted = [...notices].sort((a, b) => b.date.localeCompare(a.date));
-  const today = new Date().toISOString().split('T')[0];
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 

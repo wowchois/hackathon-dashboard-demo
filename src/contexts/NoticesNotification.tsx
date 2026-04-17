@@ -16,7 +16,7 @@ const NoticesNotificationContext = createContext<NoticesNotificationCtx>({
 });
 
 function computeFingerprint(notices: Notice[]): string {
-  return notices.map((n) => `${n.id}:${n.title}:${n.date}`).join('|');
+  return notices.map((n) => `${n.id}:${n.title}:${n.date}:${n.content}`).join('|');
 }
 
 export function NoticesNotificationProvider({ children }: { children: ReactNode }) {

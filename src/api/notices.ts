@@ -9,13 +9,18 @@ interface DBNotice {
   created_at: string;
 }
 
+function toLocalDateStr(isoStr: string): string {
+  const d = new Date(isoStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function fromDB(row: DBNotice): Notice {
   return {
     id: row.id,
     title: row.title,
     content: row.content,
     author: row.author ?? '관리자',
-    date: row.created_at.split('T')[0],
+    date: toLocalDateStr(row.created_at),
   };
 }
 
