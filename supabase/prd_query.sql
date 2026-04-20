@@ -206,7 +206,7 @@ $$;
 
 -- 3. participants RLS 변경
 --    own_read → own_read + same_team_read (Dashboard 팀원 목록 정상 동작)
-DROP POLICY "own_read" ON participants;
+DROP POLICY IF EXISTS "own_read" ON participants;
 
 CREATE POLICY "own_read" ON participants
   FOR SELECT USING (user_id = auth.uid());
@@ -218,8 +218,8 @@ CREATE POLICY "same_team_read" ON participants
 
 -- 4. submissions RLS 변경
 --    팀원 전체 → 팀장만 제출/수정 가능
-DROP POLICY "team_insert" ON submissions;
-DROP POLICY "team_update" ON submissions;
+DROP POLICY IF EXISTS "team_insert" ON submissions;
+DROP POLICY IF EXISTS "team_update" ON submissions;
 
 CREATE POLICY "leader_insert" ON submissions
   FOR INSERT WITH CHECK (
