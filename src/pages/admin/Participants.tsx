@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Crown,
   FileSpreadsheet,
   KeyRound,
   Lock,
@@ -40,6 +41,7 @@ interface ParticipantFormState {
   department: string;
   position: string;
   status: 'approved' | 'pending' | 'rejected';
+  isLeader: boolean;
 }
 
 interface TeamFormState {
@@ -74,6 +76,7 @@ const EMPTY_PARTICIPANT_FORM: ParticipantFormState = {
   department: '',
   position: '',
   status: 'pending',
+  isLeader: false,
 };
 
 const EMPTY_TEAM_FORM: TeamFormState = {
@@ -176,6 +179,7 @@ async function parseExcelFile(
       position: String(row['직급'] ?? '').trim(),
       team: '',
       status: 'pending',
+      isLeader: false,
     },
     errors: {},
     teamLocked: false,
@@ -401,12 +405,24 @@ export default function Participants() {
             department: participant.department,
             position: participant.position,
             status: participant.status,
+            isLeader: participant.isLeader ?? false,
           },
           errors: {},
           teamLocked: isInLockedTeam(participant),
         },
       };
     });
+  };
+
+  const toggleDraftIsLeader = (key: string) => {
+    const updater = (draft: ParticipantDraftRow): ParticipantDraftRow => ({
+      ...draft,
+      form: { ...draft.form, isLeader: !draft.form.isLeader },
+    });
+    setNewRows((prev) => prev.map((d) => (d.key === key ? updater(d) : d)));
+    setEditRows((prev) =>
+      prev[key] ? { ...prev, [key]: updater(prev[key]) } : prev
+    );
   };
 
   const updateDraftField = (
@@ -502,6 +518,7 @@ export default function Participants() {
         department: draft.form.department.trim(),
         position: draft.form.position.trim(),
         status: draft.form.status,
+        isLeader: draft.form.isLeader,
       };
 
       try {
@@ -907,6 +924,7 @@ export default function Participants() {
           onDelete={handleDeleteParticipant}
           onResetPassword={handleResetPassword}
           onDraftChange={updateDraftField}
+          onToggleIsLeader={toggleDraftIsLeader}
           onCancelDraft={cancelDraft}
           onSaveAll={handleSaveParticipants}
           savingParticipants={savingParticipants}
@@ -1304,6 +1322,7 @@ function ParticipantsTab({
   onDelete,
   onResetPassword,
   onDraftChange,
+  onToggleIsLeader,
   onCancelDraft,
   onSaveAll,
   savingParticipants,
@@ -1328,6 +1347,7 @@ function ParticipantsTab({
     field: keyof ParticipantFormState,
     value: string
   ) => void;
+  onToggleIsLeader: (key: string) => void;
   onCancelDraft: (key: string) => void;
   onSaveAll: () => void;
   savingParticipants: boolean;
@@ -1426,6 +1446,7 @@ function ParticipantsTab({
                   draft={draft}
                   teams={teams}
                   onDraftChange={onDraftChange}
+                  onToggleIsLeader={onToggleIsLeader}
                   onCancel={onCancelDraft}
                 />
               ))}
@@ -1439,6 +1460,7 @@ function ParticipantsTab({
                       draft={draft}
                       teams={teams}
                       onDraftChange={onDraftChange}
+                      onToggleIsLeader={onToggleIsLeader}
                       onCancel={onCancelDraft}
                     />
                   );
@@ -1447,7 +1469,17 @@ function ParticipantsTab({
                 const locked = isInLockedTeam(participant);
                 return (
                   <tr key={participant.id} className="transition-colors hover:bg-gray-50">
-                    <td className="py-3 pr-3 font-medium text-gray-800">{participant.name}</td>
+                    <td className="py-3 pr-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-gray-800">{participant.name}</span>
+                        {participant.isLeader && (
+                          <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">
+                            <Crown className="h-3 w-3" />
+                            팀장
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="truncate py-3 pr-3 text-gray-500">{participant.email}</td>
                     <td className="py-3 pr-3 text-gray-300">—</td>
                     <td className="py-3 pr-3 text-gray-500">
@@ -1505,6 +1537,7 @@ function ParticipantEditableRow({
   draft,
   teams,
   onDraftChange,
+  onToggleIsLeader,
   onCancel,
 }: {
   draft: ParticipantDraftRow;
@@ -1514,6 +1547,7 @@ function ParticipantEditableRow({
     field: keyof ParticipantFormState,
     value: string
   ) => void;
+  onToggleIsLeader: (key: string) => void;
   onCancel: (key: string) => void;
 }) {
   return (
@@ -1527,6 +1561,15 @@ function ParticipantEditableRow({
           placeholder="이름"
         />
         {draft.errors.name && <p className="mt-1 text-xs text-red-500">{draft.errors.name}</p>}
+        <label className="mt-1.5 flex cursor-pointer items-center gap-1.5 select-none">
+          <input
+            type="checkbox"
+            checked={draft.form.isLeader}
+            onChange={() => onToggleIsLeader(draft.key)}
+            className="h-3.5 w-3.5 accent-amber-500"
+          />
+          <span className="text-xs text-gray-500">팀장</span>
+        </label>
       </td>
       <td className="py-3 pr-3">
         <input
@@ -1759,7 +1802,15 @@ function TeamsTab({
                   <div className="space-y-1.5">
                     {members.map((member) => (
                       <div key={member.id} className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-gray-700">{member.name}</span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-sm font-medium text-gray-700 truncate">{member.name}</span>
+                          {member.isLeader && (
+                            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">
+                              <Crown className="h-3 w-3" />
+                              팀장
+                            </span>
+                          )}
+                        </div>
                         <div className="flex shrink-0 items-center gap-1.5">
                           <span className="text-xs text-gray-400">{member.department}</span>
                           <span className="text-xs text-gray-300">/</span>

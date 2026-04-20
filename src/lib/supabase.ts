@@ -6,7 +6,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undef
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
     '[supabase] VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set.\n' +
-    'Copy .env.example to .env.local and fill in your Supabase project values.'
+    'Copy .env.example to .env.development or .env.production and fill in your Supabase project values.'
   );
 }
 

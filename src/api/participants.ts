@@ -32,6 +32,7 @@ interface DBParticipant {
   department: string;
   position: string;
   status: 'approved' | 'pending' | 'rejected';
+  is_leader: boolean;
 }
 
 function fromDB(row: DBParticipant): Participant {
@@ -44,6 +45,7 @@ function fromDB(row: DBParticipant): Participant {
     position: row.position ?? '',
     status: row.status ?? 'pending',
     userId: row.user_id ?? undefined,
+    isLeader: row.is_leader ?? false,
   };
 }
 
@@ -73,7 +75,7 @@ export async function apiAddParticipant(p: Omit<Participant, 'id'>): Promise<Par
   return fromDB(data as DBParticipant);
 }
 
-// Edge Function으로 auth user + participant 동시 생성 (admin 전용)
+// Edge Function으로 auth user + participant 동시 생성 (admin 전용 또는 팀장)
 export async function apiCreateParticipantWithAuth(
   p: Omit<Participant, 'id'>,
   password?: string
@@ -86,6 +88,7 @@ export async function apiCreateParticipantWithAuth(
     position: p.position,
     team_id: p.team || null,
     status: p.status,
+    is_leader: p.isLeader ?? false,
   };
   // password 미제공 시 Edge Function이 IMPORT_DEFAULT_PASSWORD 환경변수 사용
   if (password) body.password = password;
@@ -130,6 +133,7 @@ export async function apiUpdateParticipantWithAuth(
   if ('department' in partial) body.department = partial.department;
   if ('position' in partial) body.position = partial.position;
   if ('status' in partial) body.status = partial.status;
+  if ('isLeader' in partial) body.is_leader = partial.isLeader;
   const { data, error } = await supabase.functions.invoke('participant-admin', {
     body,
     headers: await edgeFnHeaders(),

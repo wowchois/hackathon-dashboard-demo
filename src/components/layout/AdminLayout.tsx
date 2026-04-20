@@ -7,6 +7,7 @@ import {
   Megaphone,
   FileCheck,
   Trophy,
+  CalendarDays,
   Menu,
   X,
   LogOut,
@@ -14,11 +15,12 @@ import {
 import { useAuth } from '../../contexts/useAuth';
 
 const NAV_ITEMS = [
-  { path: '/admin',              label: '대시보드',    icon: LayoutDashboard, roles: ['admin'] },
-  { path: '/admin/participants', label: '참가자 관리', icon: Users,           roles: ['admin'] },
-  { path: '/admin/notices',      label: '공지사항',    icon: Megaphone,       roles: ['admin'] },
-  { path: '/admin/submissions',  label: '제출 현황',   icon: FileCheck,       roles: ['admin'] },
-  { path: '/admin/scores',       label: '심사 점수판', icon: Trophy,          roles: ['admin'] },
+  { path: '/admin',               label: '대시보드',    icon: LayoutDashboard, roles: ['admin'] },
+  { path: '/admin/participants',  label: '참가자 관리', icon: Users,           roles: ['admin'] },
+  { path: '/admin/milestones',    label: '일정 관리',   icon: CalendarDays,    roles: ['admin'] },
+  { path: '/admin/notices',       label: '공지사항',    icon: Megaphone,       roles: ['admin'] },
+  { path: '/admin/submissions',   label: '제출 현황',   icon: FileCheck,       roles: ['admin'] },
+  { path: '/admin/scores',        label: '심사 점수판', icon: Trophy,          roles: ['admin'] },
 ];
 
 function useActiveNav() {

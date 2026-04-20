@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/layout/AdminLayout';
 import Card from '../../components/ui/Card';
 import { useTeams } from '../../hooks/useTeams';
 import { useScores } from '../../hooks/useScores';
 import { useAllJudgeScores } from '../../hooks/useAllJudgeScores';
 import { SCORE_CRITERIA } from '../../data/scoreStore';
+import { useAuth } from '../../contexts/useAuth';
 import { Trophy, Pencil, ChevronDown, ChevronUp, Users } from 'lucide-react';
 
 const MAX_SCORE = 100;
@@ -14,7 +15,25 @@ export default function Scoring() {
   const teams = useTeams();
   const scores = useScores();
   const allJudgeScores = useAllJudgeScores();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
+  const [toast, setToast] = useState('');
+
+  const isAdmin = user?.role === 'admin';
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 3000);
+  };
+
+  const handleScoreInputClick = () => {
+    if (isAdmin) {
+      showToast('관리자는 심사할 수 없습니다.');
+    } else {
+      navigate('/admin/score-input');
+    }
+  };
 
   // 점수를 입력한 심사위원 목록 (judgeId 기준 dedup)
   const judges = useMemo(() => {
@@ -47,13 +66,17 @@ export default function Scoring() {
           <Users className="w-4 h-4" />
           <span>심사위원 {judges.length}명 입력 · 집계 방식: 평균</span>
         </div>
-        <Link
-          to="/admin/score-input"
-          className="flex items-center gap-1.5 px-3 py-2 bg-[#80766b] text-white text-sm font-medium rounded-lg hover:bg-[#6e645a] transition-colors"
+        <button
+          onClick={handleScoreInputClick}
+          className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+            isAdmin
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              : 'bg-[#80766b] text-white hover:bg-[#6e645a]'
+          }`}
         >
           <Pencil className="w-4 h-4" />
           점수 입력
-        </Link>
+        </button>
       </div>
 
       {/* ── 평가 항목 안내 ── */}
@@ -329,6 +352,11 @@ export default function Scoring() {
           만점: 창의성/독창성 {SCORE_CRITERIA[0].max} + 실용성 {SCORE_CRITERIA[1].max} + 완성도 {SCORE_CRITERIA[2].max} + 발표 {SCORE_CRITERIA[3].max} = {MAX_SCORE}점 (심사위원 평균)
         </p>
       </Card>
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg z-50">
+          {toast}
+        </div>
+      )}
     </AdminLayout>
   );
 }

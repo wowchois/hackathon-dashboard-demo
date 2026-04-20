@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import ParticipantLayout from '../../components/layout/ParticipantLayout';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import { useParticipants } from '../../hooks/useParticipants';
 import { useCurrentParticipant } from '../../hooks/useCurrentParticipant';
-import { CheckCircle2, Clock } from 'lucide-react';
+import { CheckCircle2, Clock, Crown, Lock, Plus, X } from 'lucide-react';
+import { createParticipantWithAuth } from '../../data/hackathonStore';
 
 function Initials({ name }: { name: string }) {
   return (
@@ -13,9 +15,27 @@ function Initials({ name }: { name: string }) {
   );
 }
 
+interface AddMemberForm {
+  name: string;
+  email: string;
+  department: string;
+  position: string;
+}
+
+const EMPTY_FORM: AddMemberForm = { name: '', email: '', department: '', position: '' };
+
 export default function ParticipantDashboard() {
   const participants = useParticipants();
-  const { team, loading } = useCurrentParticipant();
+  const { participant, team, loading } = useCurrentParticipant();
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showLockAlert, setShowLockAlert] = useState(false);
+  const [form, setForm] = useState<AddMemberForm>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const isLeader = participant?.isLeader ?? false;
+  const isLocked = team?.locked ?? false;
 
   const myMembers = team
     ? participants.filter((p) => p.team === team.id)
@@ -40,6 +60,37 @@ export default function ParticipantDashboard() {
   const submitStatus = team.submit_status;
   const submitted = submitStatus === 'submitted';
 
+  const openAddModal = () => {
+    setForm(EMPTY_FORM);
+    setError('');
+    setShowAddModal(true);
+  };
+
+  const handleAddMember = async () => {
+    if (!form.name.trim() || !form.email.trim()) {
+      setError('이름과 이메일은 필수입니다.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      await createParticipantWithAuth({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        department: form.department.trim(),
+        position: form.position.trim(),
+        team: team.id,
+        status: 'pending',
+        isLeader: false,
+      });
+      setShowAddModal(false);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '팀원 추가에 실패했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <ParticipantLayout>
       {/* ── 팀 헤더 카드 ── */}
@@ -54,7 +105,26 @@ export default function ParticipantDashboard() {
       </Card>
 
       {/* ── 팀원 목록 ── */}
-      <Card title="팀원 목록" className="mb-5">
+      <Card
+        title="팀원 목록"
+        className="mb-5"
+        headerRight={
+          isLeader ? (
+            <button
+              onClick={isLocked ? () => setShowLockAlert(true) : openAddModal}
+              disabled={false}
+              className={`flex items-center gap-1 text-xs font-medium ${
+                isLocked
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-[#80766b] hover:text-[#6e645a]'
+              }`}
+            >
+              {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+              팀원 추가
+            </button>
+          ) : undefined
+        }
+      >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {myMembers.map((member) => (
             <div
@@ -63,7 +133,15 @@ export default function ParticipantDashboard() {
             >
               <Initials name={member.name} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800">{member.name}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-medium text-gray-800">{member.name}</p>
+                  {member.isLeader && (
+                    <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">
+                      <Crown className="w-3 h-3" />
+                      팀장
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-400 truncate">{member.email}</p>
               </div>
               <Badge status={member.status} />
@@ -92,18 +170,10 @@ export default function ParticipantDashboard() {
             <Clock className="w-8 h-8 text-gray-400 shrink-0" />
           )}
           <div>
-            <p
-              className={`font-semibold ${
-                submitted ? 'text-green-800' : 'text-gray-600'
-              }`}
-            >
+            <p className={`font-semibold ${submitted ? 'text-green-800' : 'text-gray-600'}`}>
               {submitted ? '제출 완료' : '아직 제출하지 않았습니다'}
             </p>
-            <p
-              className={`text-xs mt-0.5 ${
-                submitted ? 'text-green-600' : 'text-gray-400'
-              }`}
-            >
+            <p className={`text-xs mt-0.5 ${submitted ? 'text-green-600' : 'text-gray-400'}`}>
               {submitted
                 ? '심사위원회에서 검토 중입니다.'
                 : '제출하기 메뉴에서 결과물을 제출해주세요.'}
@@ -111,6 +181,83 @@ export default function ParticipantDashboard() {
           </div>
         </div>
       </Card>
+
+      {/* ── 팀 잠금 알림 팝업 ── */}
+      {showLockAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <Lock className="w-5 h-5 text-gray-500 shrink-0" />
+              <h2 className="text-base font-semibold text-gray-800">팀 잠금</h2>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              잠금된 팀에는 팀원을 추가할 수 없습니다. 관리자에게 문의하세요.
+            </p>
+            <div className="mt-5 flex justify-end">
+              <button
+                onClick={() => setShowLockAlert(false)}
+                className="rounded-lg bg-[#80766b] px-4 py-2 text-sm font-medium text-white hover:bg-[#6e645a]"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 팀원 추가 모달 (팀장 전용) ── */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-semibold text-gray-800">팀원 추가</h2>
+              <button onClick={() => setShowAddModal(false)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {[
+                { label: '이름', key: 'name', placeholder: '홍길동', required: true },
+                { label: '이메일', key: 'email', placeholder: 'hong@example.com', required: true },
+                { label: '부서', key: 'department', placeholder: '개발팀', required: false },
+                { label: '직급', key: 'position', placeholder: '대리', required: false },
+              ].map(({ label, key, placeholder, required }) => (
+                <div key={key}>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    {label}{required && <span className="ml-0.5 text-red-400">*</span>}
+                  </label>
+                  <input
+                    type={key === 'email' ? 'email' : 'text'}
+                    placeholder={placeholder}
+                    value={form[key as keyof AddMemberForm]}
+                    onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#80766b]/30"
+                  />
+                </div>
+              ))}
+            </div>
+
+            {error && <p className="mt-3 text-xs text-red-500">{error}</p>}
+
+            <div className="mt-5 flex gap-2 justify-end">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleAddMember}
+                disabled={saving}
+                className="rounded-lg bg-[#80766b] px-4 py-2 text-sm font-medium text-white hover:bg-[#6e645a] disabled:opacity-40"
+              >
+                {saving ? '추가 중...' : '추가'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ParticipantLayout>
   );
 }

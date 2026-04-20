@@ -6,6 +6,43 @@ import { apiFetchSubmission, apiUpsertSubmission } from '../../api/submissions';
 import type { Submission } from '../../api/submissions';
 import { CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 
+function SubmissionReadOnly({ submission }: { submission: Submission }) {
+  const githubHref = getSafeHttpsHref(submission.githubUrl);
+  const slidesHref = getSafeHttpsHref(submission.slidesUrl);
+  return (
+    <Card title="제출 내역" className="mb-5">
+      <div className="space-y-4">
+        <div>
+          <p className="text-xs text-gray-400 mb-1">GitHub 저장소</p>
+          {githubHref ? (
+            <a href={githubHref} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm text-[#80766b] hover:underline break-all">
+              {submission.githubUrl}<ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            </a>
+          ) : (
+            <p className="text-sm text-red-600 break-all">{submission.githubUrl}</p>
+          )}
+        </div>
+        <div>
+          <p className="text-xs text-gray-400 mb-1">발표 자료</p>
+          {slidesHref ? (
+            <a href={slidesHref} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm text-[#80766b] hover:underline break-all">
+              {submission.slidesUrl}<ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            </a>
+          ) : (
+            <p className="text-sm text-red-600 break-all">{submission.slidesUrl}</p>
+          )}
+        </div>
+        <div>
+          <p className="text-xs text-gray-400 mb-1">프로젝트 설명</p>
+          <p className="text-sm text-gray-700 leading-relaxed">{submission.description}</p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function getSafeHttpsHref(value: string): string | null {
   try {
     const parsed = new URL(value);
@@ -31,7 +68,8 @@ function getUrlError(value: string, label: string): string | null {
 }
 
 export default function Submit() {
-  const { team, loading: teamLoading } = useCurrentParticipant();
+  const { participant, team, loading: teamLoading } = useCurrentParticipant();
+  const isLeader = participant?.isLeader ?? false;
 
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [loadingSubmission, setLoadingSubmission] = useState(true);
@@ -62,8 +100,6 @@ export default function Submit() {
 
   const submitted = submission !== null;
   const isFormValid = github.trim() && slides.trim() && description.trim();
-  const githubHref = submission ? getSafeHttpsHref(submission.githubUrl) : null;
-  const slidesHref = submission ? getSafeHttpsHref(submission.slidesUrl) : null;
 
   const handleSubmit = async () => {
     if (!isFormValid || !team?.id) return;
@@ -114,6 +150,32 @@ export default function Submit() {
     );
   }
 
+  // 팀원(비팀장)은 제출 내역 조회만 가능
+  if (!isLeader) {
+    return (
+      <ParticipantLayout>
+        {submitted ? (
+          <>
+            <div className="flex items-center gap-4 rounded-xl border px-5 py-4 mb-6 bg-green-50 border-green-100">
+              <CheckCircle2 className="w-9 h-9 text-green-500 shrink-0" />
+              <div>
+                <p className="font-semibold text-green-800">제출 완료</p>
+                <p className="text-xs mt-0.5 text-green-600">{submission!.submittedAt} 제출됨</p>
+              </div>
+            </div>
+            <SubmissionReadOnly submission={submission!} />
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+            <AlertCircle className="w-10 h-10 text-gray-300" />
+            <p className="text-sm font-medium text-gray-500">팀장만 제출하기가 가능합니다.</p>
+            <p className="text-xs text-gray-400">제출이 완료되면 여기서 내역을 확인할 수 있습니다.</p>
+          </div>
+        )}
+      </ParticipantLayout>
+    );
+  }
+
   return (
     <ParticipantLayout>
       {/* ── 현재 제출 상태 ── */}
@@ -140,47 +202,7 @@ export default function Submit() {
       {/* ── 제출 완료 상태 ── */}
       {submitted ? (
         <>
-          <Card title="제출 내역" className="mb-5">
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs text-gray-400 mb-1">GitHub 저장소</p>
-                {githubHref ? (
-                  <a
-                    href={githubHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-sm text-[#80766b] hover:underline break-all"
-                  >
-                    {submission!.githubUrl}
-                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                  </a>
-                ) : (
-                  <p className="text-sm text-red-600 break-all">{submission!.githubUrl}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-xs text-gray-400 mb-1">발표 자료</p>
-                {slidesHref ? (
-                  <a
-                    href={slidesHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-sm text-[#80766b] hover:underline break-all"
-                  >
-                    {submission!.slidesUrl}
-                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                  </a>
-                ) : (
-                  <p className="text-sm text-red-600 break-all">{submission!.slidesUrl}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-xs text-gray-400 mb-1">프로젝트 설명</p>
-                <p className="text-sm text-gray-700 leading-relaxed">{submission!.description}</p>
-              </div>
-            </div>
-          </Card>
-
+          <SubmissionReadOnly submission={submission!} />
           <div className="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-xl p-4 text-sm text-amber-800">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
             <p>

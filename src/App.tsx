@@ -8,6 +8,7 @@ import ChangePassword from './pages/ChangePassword';
 import Dashboard from './pages/admin/Dashboard';
 import Participants from './pages/admin/Participants';
 import AdminNotices from './pages/admin/Notices';
+import AdminMilestones from './pages/admin/Milestones';
 import Submissions from './pages/admin/Submissions';
 import Scoring from './pages/admin/Scoring';
 import ScoreInput from './pages/admin/ScoreInput';
@@ -53,6 +54,14 @@ export default function App() {
             element={
               <ProtectedRoute roles={['admin']}>
                 <Participants />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/milestones"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <AdminMilestones />
               </ProtectedRoute>
             }
           />

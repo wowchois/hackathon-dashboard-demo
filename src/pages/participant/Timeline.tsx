@@ -18,7 +18,8 @@ function formatDday(days: number): string {
 }
 
 export default function Timeline() {
-  const milestones = useMilestones();
+  const { data: allMilestones } = useMilestones();
+  const milestones = allMilestones.filter((m) => m.isPublic);
 
   const doneMilestones = milestones.filter((m) => m.isDone);
   const progress = milestones.length > 0
@@ -146,6 +147,11 @@ export default function Timeline() {
                     >
                       {milestone.date}
                     </p>
+                    {milestone.description && (
+                      <p className={`text-xs mt-1 leading-relaxed ${isDone ? 'text-gray-300' : 'text-gray-400'}`}>
+                        {milestone.description}
+                      </p>
+                    )}
                   </div>
                 </div>
               </li>

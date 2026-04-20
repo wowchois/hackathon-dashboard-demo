@@ -4,6 +4,14 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Users, Calendar, Megaphone, Upload, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../../contexts/useAuth';
 import { useCurrentParticipant } from '../../hooks/useCurrentParticipant';
+import {
+  MilestonesNotificationProvider,
+  useMilestonesNotification,
+} from '../../contexts/MilestonesNotification';
+import {
+  NoticesNotificationProvider,
+  useNoticesNotification,
+} from '../../contexts/NoticesNotification';
 
 const NAV_ITEMS = [
   { path: '/participant',          label: '내 팀',    icon: Users },
@@ -11,6 +19,9 @@ const NAV_ITEMS = [
   { path: '/participant/notices',  label: '공지사항', icon: Megaphone },
   { path: '/participant/submit',   label: '제출하기', icon: Upload },
 ];
+
+const SCHEDULE_PATH = '/participant/schedule';
+const NOTICES_PATH = '/participant/notices';
 
 function useActiveNav() {
   const { pathname } = useLocation();
@@ -23,12 +34,26 @@ interface ParticipantLayoutProps {
   children: ReactNode;
 }
 
+// Provider로 감싼 진입점
 export default function ParticipantLayout({ children }: ParticipantLayoutProps) {
+  return (
+    <MilestonesNotificationProvider>
+      <NoticesNotificationProvider>
+        <ParticipantLayoutContent>{children}</ParticipantLayoutContent>
+      </NoticesNotificationProvider>
+    </MilestonesNotificationProvider>
+  );
+}
+
+// 실제 레이아웃 — context 소비
+function ParticipantLayoutContent({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isActive } = useActiveNav();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { team } = useCurrentParticipant();
+  const { hasNew } = useMilestonesNotification();
+  const { hasNew: hasNewNotices } = useNoticesNotification();
 
   const handleLogout = async () => {
     await signOut();
@@ -56,6 +81,7 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
           <ul className="space-y-1">
             {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
               const active = isActive(path);
+              const showDot = (path === SCHEDULE_PATH && hasNew) || (path === NOTICES_PATH && hasNewNotices);
               return (
                 <li key={path}>
                   <Link
@@ -66,7 +92,12 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                       }`}
                   >
-                    <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-[#80766b]' : 'text-gray-400'}`} />
+                    <span className="relative shrink-0">
+                      <Icon className={`w-4 h-4 ${active ? 'text-[#80766b]' : 'text-gray-400'}`} />
+                      {showDot && (
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full ring-1 ring-white" />
+                      )}
+                    </span>
                     {label}
                   </Link>
                 </li>
@@ -122,6 +153,7 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
           <ul className="space-y-1">
             {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
               const active = isActive(path);
+              const showDot = (path === SCHEDULE_PATH && hasNew) || (path === NOTICES_PATH && hasNewNotices);
               return (
                 <li key={path}>
                   <Link
@@ -133,7 +165,12 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                       }`}
                   >
-                    <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-[#80766b]' : 'text-gray-400'}`} />
+                    <span className="relative shrink-0">
+                      <Icon className={`w-4 h-4 ${active ? 'text-[#80766b]' : 'text-gray-400'}`} />
+                      {showDot && (
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full ring-1 ring-white" />
+                      )}
+                    </span>
                     {label}
                   </Link>
                 </li>
@@ -198,6 +235,7 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
           <ul className="flex">
             {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
               const active = isActive(path);
+              const showDot = (path === SCHEDULE_PATH && hasNew) || (path === NOTICES_PATH && hasNewNotices);
               return (
                 <li key={path} className="flex-1">
                   <Link
@@ -205,7 +243,12 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
                     className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors
                       ${active ? 'text-[#fcaf17]' : 'text-gray-400 hover:text-gray-600'}`}
                   >
-                    <Icon className={`w-5 h-5 ${active ? 'text-[#fcaf17]' : ''}`} />
+                    <span className="relative">
+                      <Icon className={`w-5 h-5 ${active ? 'text-[#fcaf17]' : ''}`} />
+                      {showDot && (
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full ring-1 ring-white" />
+                      )}
+                    </span>
                     <span>{label}</span>
                   </Link>
                 </li>
