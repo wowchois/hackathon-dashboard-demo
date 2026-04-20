@@ -41,10 +41,14 @@ Deno.serve(async (req: Request) => {
   const { data: userData, error: userError } = await callerClient.auth.getUser();
   if (userError || !userData?.user) return json({ error: "Unauthorized" }, 401);
 
-  // ── admin 역할 확인 (app_metadata만 신뢰 — user_metadata는 사용자가 수정 가능) ──
+  // ── 역할 확인 (app_metadata만 신뢰 — user_metadata는 사용자가 수정 가능) ──
   const caller = userData.user;
   const callerRole = caller.app_metadata?.role;
-  if (callerRole !== "admin") return json({ error: "Forbidden" }, 403);
+  const isAdmin = callerRole === "admin";
+  const isParticipant = callerRole === "participant";
+
+  // admin 또는 participant(팀장 여부는 create 내부에서 추가 검증)만 허용
+  if (!isAdmin && !isParticipant) return json({ error: "Forbidden" }, 403);
 
   // ── service_role 클라이언트 (auth admin + DB 직접 조작) ────────
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -57,11 +61,39 @@ Deno.serve(async (req: Request) => {
   }
   const { action } = body;
 
+  // participant는 create만 허용 (update, delete, reset-password는 admin 전용)
+  if (!isAdmin && action !== "create") {
+    return json({ error: "Forbidden" }, 403);
+  }
+
   // ── 참가자 생성 ────────────────────────────────────────────────
   if (action === "create") {
-    const { name, email, password, department, position, team_id, status } = body;
+    const { name, email, password, department, position, team_id, status, is_leader } = body;
 
     if (!email || !name) return json({ error: "email, name은 필수입니다." }, 400);
+
+    let resolvedTeamId = (team_id as string | undefined) || null;
+    let resolvedIsLeader = (is_leader as boolean | undefined) ?? false;
+
+    if (!isAdmin) {
+      // 팀장 여부 확인 (service_role 사용 — RLS 우회)
+      const { data: leaderRow } = await admin
+        .from("participants")
+        .select("team_id, is_leader")
+        .eq("user_id", caller.id)
+        .single();
+
+      if (!leaderRow?.is_leader) {
+        return json({ error: "팀장만 팀원을 추가할 수 있습니다." }, 403);
+      }
+      if (!leaderRow.team_id) {
+        return json({ error: "팀에 소속되지 않은 팀장입니다." }, 400);
+      }
+
+      // 팀장은 자신의 팀에만 추가 가능, is_leader·status 강제 고정
+      resolvedTeamId = leaderRow.team_id;
+      resolvedIsLeader = false;
+    }
 
     // password 미제공(엑셀 일괄 등록) 시 서버 환경변수 사용 — 클라이언트에 노출되지 않음
     const resolvedPassword = (password as string | undefined)?.trim()
@@ -85,10 +117,11 @@ Deno.serve(async (req: Request) => {
         user_id: authData.user.id,
         name,
         email,
-        team_id: team_id || null,
+        team_id: resolvedTeamId,
         department: department ?? "",
         position: position ?? "",
-        status: status ?? "pending",
+        status: isAdmin ? (status ?? "pending") : "pending",
+        is_leader: resolvedIsLeader,
       })
       .select()
       .single();
@@ -102,9 +135,9 @@ Deno.serve(async (req: Request) => {
     return json({ participant });
   }
 
-  // ── 참가자 수정 ────────────────────────────────────────────────
+  // ── 참가자 수정 (admin 전용) ───────────────────────────────────
   if (action === "update") {
-    const { participant_id, user_id, name, team_id, department, position, status } = body;
+    const { participant_id, user_id, name, team_id, department, position, status, is_leader } = body;
 
     if (!participant_id) return json({ error: "participant_id가 필요합니다." }, 400);
 
@@ -114,6 +147,7 @@ Deno.serve(async (req: Request) => {
     if (department !== undefined) patch.department = department;
     if (position !== undefined) patch.position = position;
     if (status !== undefined) patch.status = status;
+    if (is_leader !== undefined) patch.is_leader = is_leader;
 
     if (Object.keys(patch).length === 0) return json({ error: "수정할 항목이 없습니다." }, 400);
 
@@ -138,7 +172,7 @@ Deno.serve(async (req: Request) => {
     return json({ success: true });
   }
 
-  // ── 참가자 삭제 ────────────────────────────────────────────────
+  // ── 참가자 삭제 (admin 전용) ───────────────────────────────────
   if (action === "delete") {
     const { participant_id, user_id } = body;
 
@@ -160,7 +194,7 @@ Deno.serve(async (req: Request) => {
     return json({ success: true });
   }
 
-  // ── 비밀번호 초기화 ────────────────────────────────────────────
+  // ── 비밀번호 초기화 (admin 전용) ──────────────────────────────
   if (action === "reset-password") {
     const { user_id } = body;
     if (!user_id) return json({ error: "user_id가 필요합니다." }, 400);
