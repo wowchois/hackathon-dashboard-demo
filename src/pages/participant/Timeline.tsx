@@ -61,7 +61,12 @@ export default function Timeline() {
   const attendanceMap = useMyAttendances(participant?.id);
 
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // 투표 완료 후 잠금 해제(재투표) 요청된 milestoneId Set
+  const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
+  // 낙관적 업데이트: 서버 응답 즉시 UI에 반영
+  const [localVotes, setLocalVotes] = useState<Map<string, boolean>>(new Map());
 
   const milestones = allMilestones.filter((m) => m.isPublic);
   const doneMilestones = milestones.filter((m) => m.isDone);
@@ -73,18 +78,32 @@ export default function Timeline() {
   const nextMilestone = currentIdx !== -1 ? milestones[currentIdx] : null;
   const ddayValue = nextMilestone ? getDday(nextMilestone.date) : null;
 
+  const getMyVote = (id: string): boolean | undefined =>
+    localVotes.has(id) ? localVotes.get(id) : attendanceMap.get(id);
+  const getHasVote = (id: string): boolean =>
+    localVotes.has(id) || attendanceMap.has(id);
+
   const handleVote = useCallback(async (milestoneId: string, attending: boolean) => {
     if (savingId) return;
     setSavingId(milestoneId);
     setErrorMsg(null);
     try {
       await apiVoteAttendance(milestoneId, attending);
+      // 낙관적 업데이트 + 잠금
+      setLocalVotes((prev) => new Map(prev).set(milestoneId, attending));
+      setRetryingIds((prev) => { const next = new Set(prev); next.delete(milestoneId); return next; });
+      setSuccessMsg('투표되었습니다.');
+      setTimeout(() => setSuccessMsg(null), 3000);
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : '투표에 실패했습니다.');
     } finally {
       setSavingId(null);
     }
   }, [savingId]);
+
+  const handleRetry = useCallback((milestoneId: string) => {
+    setRetryingIds((prev) => new Set(prev).add(milestoneId));
+  }, []);
 
   return (
     <ParticipantLayout>
@@ -130,9 +149,11 @@ export default function Timeline() {
             const isDone = milestone.isDone;
             const isLast = idx === milestones.length - 1;
             const votingOpen = isVotingOpen(milestone.date);
-            const myVote = attendanceMap.get(milestone.id); // true | false | undefined
-            const hasVote = attendanceMap.has(milestone.id);
+            const myVote = getMyVote(milestone.id);
+            const hasVote = getHasVote(milestone.id);
             const isSaving = savingId === milestone.id;
+            // 투표 완료 후 잠금 상태: 재투표 버튼 표시
+            const isLocked = votingOpen && hasVote && !retryingIds.has(milestone.id);
 
             return (
               <li key={milestone.id} className="flex gap-4">
@@ -200,7 +221,30 @@ export default function Timeline() {
                     {/* ── 투표 영역 ── */}
                     {(votingOpen || hasVote) && (
                       <div className="mt-3 pt-3 border-t border-gray-100">
-                        {votingOpen ? (
+                        {isLocked ? (
+                          /* 투표 완료 잠금: 결과 표시 + 재투표 버튼 */
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg ${
+                                  myVote === true
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-red-50 text-red-500'
+                                }`}
+                              >
+                                {myVote === true ? '✓ 참석' : '✗ 불참'}
+                              </span>
+                              <span className="text-xs text-gray-400">으로 투표됨</span>
+                            </div>
+                            <button
+                              onClick={() => handleRetry(milestone.id)}
+                              className="text-xs text-gray-400 hover:text-indigo-600 underline underline-offset-2 transition-colors"
+                            >
+                              재투표
+                            </button>
+                          </div>
+                        ) : votingOpen ? (
+                          /* 투표 버튼 */
                           <>
                             <p className="text-xs text-gray-400 mb-2">
                               참석 여부 · 마감 {getVoteDeadlineLabel(milestone.date)}
@@ -215,7 +259,7 @@ export default function Timeline() {
                                     : 'border border-green-300 text-green-600 hover:bg-green-50'
                                 }`}
                               >
-                                {isSaving && myVote !== true ? '...' : '참석'}
+                                {isSaving ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : '참석'}
                               </button>
                               <button
                                 onClick={() => handleVote(milestone.id, false)}
@@ -226,11 +270,12 @@ export default function Timeline() {
                                     : 'border border-red-200 text-red-400 hover:bg-red-50'
                                 }`}
                               >
-                                {isSaving && myVote !== false ? '...' : '불참'}
+                                {isSaving ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : '불참'}
                               </button>
                             </div>
                           </>
                         ) : (
+                          /* 투표 마감 후 읽기 전용 */
                           <div className="flex items-center gap-1.5">
                             <span className="text-xs text-gray-400">내 투표:</span>
                             <span className={`text-xs font-medium ${myVote === true ? 'text-green-600' : 'text-red-400'}`}>
@@ -248,7 +293,14 @@ export default function Timeline() {
         </ol>
       </Card>
 
-      {/* ── 투표 에러 토스트 ── */}
+      {/* ── 성공 토스트 ── */}
+      {successMsg && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 lg:bottom-6 z-50 bg-green-600 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg max-w-xs text-center">
+          {successMsg}
+        </div>
+      )}
+
+      {/* ── 에러 토스트 ── */}
       {errorMsg && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 lg:bottom-6 z-50 bg-red-500 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg max-w-xs text-center">
           {errorMsg}
