@@ -184,7 +184,27 @@ CREATE POLICY "team_update" ON submissions
 
 
 -- ============================================================
--- MIGRATION: 팀장 권한 추가
+-- MIGRATION: 참석 투표 기능 추가
+-- ============================================================
+
+-- 1. 마일스톤별 참가자 참석 투표 테이블
+CREATE TABLE milestone_attendances (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  milestone_id   uuid NOT NULL REFERENCES milestones(id) ON DELETE CASCADE,
+  participant_id uuid NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+  attending      boolean NOT NULL,
+  updated_at     timestamptz DEFAULT now(),
+  UNIQUE(milestone_id, participant_id)
+);
+
+-- 2. RLS
+ALTER TABLE milestone_attendances ENABLE ROW LEVEL SECURITY;
+
+-- 인증된 전체 사용자 읽기 (관리자 집계 + 참가자 본인 확인)
+CREATE POLICY "read" ON milestone_attendances
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- 참가자 write는 Edge Function(service_role)이 처리하므로 별도 정책 불필요
 -- 이미 위 쿼리로 테이블이 생성된 경우 아래 쿼리만 실행
 -- ============================================================
 

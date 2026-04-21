@@ -92,8 +92,8 @@ Deno.serve(async (req: Request) => {
   }
   const { action } = body;
 
-  // participant는 create만 허용 (update, delete, reset-password는 admin 전용)
-  if (!isAdmin && action !== "create") {
+  // participant는 create, vote-attendance만 허용 (update, delete, reset-password는 admin 전용)
+  if (!isAdmin && action !== "create" && action !== "vote-attendance") {
     return json({ error: "Forbidden" }, 403);
   }
 
@@ -287,6 +287,57 @@ Deno.serve(async (req: Request) => {
       }
     );
     if (authError) return json({ error: authError.message }, 400);
+
+    return json({ success: true });
+  }
+
+  // ── 참석 투표 (participant 전용) ──────────────────────────────
+  if (action === "vote-attendance") {
+    const { milestone_id, attending } = body;
+
+    if (!milestone_id) return json({ error: "milestone_id가 필요합니다." }, 400);
+    if (typeof attending !== "boolean") return json({ error: "attending은 boolean이어야 합니다." }, 400);
+
+    if (!callerParticipant) {
+      return json({ error: "참가자 정보를 찾을 수 없습니다." }, 404);
+    }
+
+    // 마일스톤 날짜 조회
+    const { data: milestone, error: milestoneError } = await admin
+      .from("milestones")
+      .select("date")
+      .eq("id", milestone_id as string)
+      .single();
+
+    if (milestoneError || !milestone) {
+      return json({ error: "일정을 찾을 수 없습니다." }, 404);
+    }
+
+    // 투표 가능 기간 확인: milestone.date - 7일 ≤ 오늘 ≤ milestone.date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const milestoneDate = new Date(milestone.date);
+    milestoneDate.setHours(0, 0, 0, 0);
+    const openDate = new Date(milestoneDate);
+    openDate.setDate(openDate.getDate() - 7);
+
+    if (today < openDate || today > milestoneDate) {
+      return json({ error: "투표 가능 기간이 아닙니다. 일정 7일 전부터 당일까지 투표할 수 있습니다." }, 403);
+    }
+
+    const { error: upsertError } = await admin
+      .from("milestone_attendances")
+      .upsert(
+        {
+          milestone_id,
+          participant_id: callerParticipant.id,
+          attending,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "milestone_id,participant_id" }
+      );
+
+    if (upsertError) return json({ error: upsertError.message }, 400);
 
     return json({ success: true });
   }
