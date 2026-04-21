@@ -4,13 +4,15 @@ import AdminLayout from '../../components/layout/AdminLayout';
 import Card from '../../components/ui/Card';
 import { useTeams } from '../../hooks/useTeams';
 import { useJudgeScores } from '../../hooks/useJudgeScores';
+import { useSettings } from '../../hooks/useSettings';
 import { useAuth } from '../../contexts/useAuth';
+import { isJudgingOpen } from '../../api/settings';
 import {
   SCORE_CRITERIA,
   type JudgeScore,
   updateScore,
 } from '../../data/scoreStore';
-import { ArrowLeft, Save, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Save, CheckCircle2 } from 'lucide-react';
 
 type TeamDraft = { creativity: number; practicality: number; completion: number; presentation: number };
 type DraftScores = Record<string, TeamDraft>;
@@ -28,6 +30,14 @@ export default function ScoreInput() {
   const allTeams = useTeams();
   const teams = allTeams.filter((t) => t.submitStatus === 'submitted');
   const { user } = useAuth();
+  const settings = useSettings();
+  const judgingOpen = isJudgingOpen(settings);
+  const criteriaMax: Record<string, number> = {
+    creativity: settings.creativityMax,
+    practicality: settings.practicalityMax,
+    completion: settings.completionMax,
+    presentation: settings.presentationMax,
+  };
 
   // 로그인된 사용자를 심사위원으로 사용
   const judgeId = user?.id ?? '';
@@ -50,7 +60,7 @@ export default function ScoreInput() {
     field: 'creativity' | 'practicality' | 'completion' | 'presentation',
     raw: string
   ) => {
-    const max = SCORE_CRITERIA.find((c) => c.key === field)!.max;
+    const max = criteriaMax[field] ?? 25;
     const val = Math.min(max, Math.max(0, Number(raw) || 0));
     setDraft((prev) => ({
       ...prev,
@@ -129,7 +139,7 @@ export default function ScoreInput() {
         </div>
         <button
           onClick={handleSaveAll}
-          disabled={!isHydrated}
+          disabled={!isHydrated || !judgingOpen}
           className="flex items-center gap-1.5 px-3 py-2 bg-[#80766b] text-white text-sm font-medium rounded-lg hover:bg-[#6e645a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <Save className="w-4 h-4" />
@@ -143,6 +153,18 @@ export default function ScoreInput() {
         <span className="text-gray-400">심사위원으로 입력 중</span>
       </div>
 
+      {/* ── 심사 기간 상태 배너 ── */}
+      {!judgingOpen && (
+        <div className="mb-5 flex items-start gap-3 px-4 py-3 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-800">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+          {settings.scoresPublished
+            ? '결과가 공개되어 점수를 수정할 수 없습니다.'
+            : settings.submissionDeadline
+              ? '아직 제출 마감 전입니다. 마감 후 심사가 시작됩니다.'
+              : '운영 설정에서 제출 마감일시를 설정하면 심사가 시작됩니다.'}
+        </div>
+      )}
+
       {/* ── 제출 팀 안내 ── */}
       {allTeams.length > teams.length && (
         <div className="mb-6 px-4 py-3 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
@@ -154,7 +176,7 @@ export default function ScoreInput() {
       <div className="grid grid-cols-4 gap-2 mb-6">
         {SCORE_CRITERIA.map((c) => (
           <div key={c.key} className="bg-gray-50 rounded-xl p-3 text-center border border-gray-100">
-            <p className="text-lg font-bold text-gray-700">{c.max}점</p>
+            <p className="text-lg font-bold text-gray-700">{criteriaMax[c.key]}점</p>
             <p className="text-xs text-gray-400 mt-0.5">{c.label}</p>
           </div>
         ))}
@@ -171,7 +193,7 @@ export default function ScoreInput() {
                   {SCORE_CRITERIA.map((c) => (
                     <th key={c.key} className="pb-3 pr-4 text-center">
                       {c.label}
-                      <span className="text-gray-300 font-normal ml-1">/ {c.max}</span>
+                      <span className="text-gray-300 font-normal ml-1">/ {criteriaMax[c.key]}</span>
                     </th>
                   ))}
                   <th className="pb-3 pr-4 text-center">합계</th>
@@ -192,10 +214,11 @@ export default function ScoreInput() {
                           <input
                             type="number"
                             min={0}
-                            max={c.max}
+                            max={criteriaMax[c.key]}
                             value={d[c.key]}
+                            disabled={!judgingOpen}
                             onChange={(e) => setField(team.id, c.key, e.target.value)}
-                            className="w-20 px-2 py-1.5 text-center text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30"
+                            className="w-20 px-2 py-1.5 text-center text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30 disabled:bg-gray-50 disabled:text-gray-400"
                           />
                         </td>
                       ))}
@@ -213,7 +236,7 @@ export default function ScoreInput() {
                         ) : (
                           <button
                             onClick={() => handleSave(team.id)}
-                            disabled={!changed}
+                            disabled={!changed || !judgingOpen}
                             className="px-3 py-1.5 text-xs font-medium bg-[#80766b] text-white rounded-lg hover:bg-[#6e645a] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                           >
                             저장
@@ -252,18 +275,19 @@ export default function ScoreInput() {
                       <input
                         type="number"
                         min={0}
-                        max={c.max}
+                        max={criteriaMax[c.key]}
                         value={d[c.key]}
+                        disabled={!judgingOpen}
                         onChange={(e) => setField(team.id, c.key, e.target.value)}
-                        className="w-20 px-3 py-2 text-center text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30"
+                        className="w-20 px-3 py-2 text-center text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30 disabled:bg-gray-50 disabled:text-gray-400"
                       />
                       <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-[#80766b] rounded-full transition-all"
-                          style={{ width: `${Math.min((d[c.key] / c.max) * 100, 100)}%` }}
+                          style={{ width: `${Math.min((d[c.key] / criteriaMax[c.key]) * 100, 100)}%` }}
                         />
                       </div>
-                      <span className="text-xs text-gray-400 shrink-0">/ {c.max}</span>
+                      <span className="text-xs text-gray-400 shrink-0">/ {criteriaMax[c.key]}</span>
                     </div>
                   </div>
                 ))}
@@ -277,7 +301,7 @@ export default function ScoreInput() {
                 ) : (
                   <button
                     onClick={() => handleSave(team.id)}
-                    disabled={!changed}
+                    disabled={!changed || !judgingOpen}
                     className="w-full py-2 text-sm font-medium bg-[#80766b] text-white rounded-lg hover:bg-[#6e645a] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     저장하기

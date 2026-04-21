@@ -12,11 +12,13 @@ import AdminMilestones from './pages/admin/Milestones';
 import Submissions from './pages/admin/Submissions';
 import Scoring from './pages/admin/Scoring';
 import ScoreInput from './pages/admin/ScoreInput';
+import AdminSettings from './pages/admin/Settings';
 // Participant pages
 import ParticipantDashboard from './pages/participant/Dashboard';
 import Timeline from './pages/participant/Timeline';
 import ParticipantNotices from './pages/participant/Notices';
 import Submit from './pages/participant/Submit';
+import ParticipantScores from './pages/participant/Scores';
 import Notifications from './pages/participant/Notifications';
 
 export default function App() {
@@ -99,6 +101,14 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/settings"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <AdminSettings />
+              </ProtectedRoute>
+            }
+          />
 
           {/* ── 참가자 전용 ─────────────────────────────────────── */}
           <Route
@@ -130,6 +140,14 @@ export default function App() {
             element={
               <ProtectedRoute roles={['participant']}>
                 <Submit />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/participant/scores"
+            element={
+              <ProtectedRoute roles={['participant']}>
+                <ParticipantScores />
               </ProtectedRoute>
             }
           />

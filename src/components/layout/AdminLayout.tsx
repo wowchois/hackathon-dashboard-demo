@@ -8,10 +8,13 @@ import {
   FileCheck,
   Trophy,
   CalendarDays,
+  Settings,
   Menu,
   X,
   LogOut,
 } from 'lucide-react';
+
+const SETTINGS_PATH = '/admin/settings';
 import { useAuth } from '../../contexts/useAuth';
 
 const NAV_ITEMS = [
@@ -21,6 +24,7 @@ const NAV_ITEMS = [
   { path: '/admin/notices',       label: '공지사항',    icon: Megaphone,       roles: ['admin'] },
   { path: '/admin/submissions',   label: '제출 현황',   icon: FileCheck,       roles: ['admin'] },
   { path: '/admin/scores',        label: '심사 점수판', icon: Trophy,          roles: ['admin'] },
+  { path: '/admin/settings',     label: '운영 설정',   icon: Settings,        roles: ['admin'] },
 ];
 
 function useActiveNav() {
@@ -106,21 +110,31 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {currentLabel}
           </span>
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2">
             {/* 사용자 이름 (데스크탑) */}
             {user && (
-              <span className="hidden lg:block text-sm text-gray-600">
+              <span className="hidden lg:block text-sm text-gray-600 lg:order-1">
                 {user.name}
               </span>
             )}
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#80766b]/10 text-[#80766b] ring-1 ring-[#80766b]/20">
+            {/* 운영 설정 버튼 (관리자만) */}
+            {!isJudge && (
+              <Link
+                to={SETTINGS_PATH}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors lg:order-3"
+              >
+                <Settings className="w-4 h-4 shrink-0" />
+                <span>운영 설정</span>
+              </Link>
+            )}
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#80766b]/10 text-[#80766b] ring-1 ring-[#80766b]/20 lg:order-2">
               {roleLabel}
             </span>
             {/* 로그아웃 (데스크탑 헤더는 아이콘만) */}
             <button
               onClick={handleLogout}
               title="로그아웃"
-              className="hidden lg:flex p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              className="hidden lg:flex p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors lg:order-4"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -136,7 +150,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {!isJudge && (
           <nav className="lg:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-100">
             <ul className="flex">
-              {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
+              {NAV_ITEMS.filter(({ path }) => path !== SETTINGS_PATH).map(({ path, label, icon: Icon }) => {
                 const active = isActive(path);
                 return (
                   <li key={path} className="flex-1">
@@ -164,7 +178,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 function Logo() {
   return (
     <Link to="/admin" className="text-base font-bold text-[#80766b] tracking-tight">
-      해커톤 2026
+      {new Date().getFullYear()} KBDS AI 해커톤
     </Link>
   );
 }

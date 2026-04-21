@@ -171,6 +171,33 @@ CREATE POLICY "team_update" ON submissions
   );
 
 -- ============================================================
+-- settings (운영 설정 — 단일 row, id=1 고정)
+-- ============================================================
+
+CREATE TABLE settings (
+  id                  int PRIMARY KEY DEFAULT 1,
+  submission_deadline timestamptz,
+  scores_published    boolean NOT NULL DEFAULT false,
+  creativity_max      int     NOT NULL DEFAULT 25,
+  practicality_max    int     NOT NULL DEFAULT 25,
+  completion_max      int     NOT NULL DEFAULT 25,
+  presentation_max    int     NOT NULL DEFAULT 25
+);
+
+-- 초기 row 삽입
+INSERT INTO settings (id) VALUES (1) ON CONFLICT DO NOTHING;
+
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+
+-- 인증된 사용자 전체 읽기 (참가자도 deadline·scores_published 조회 필요)
+CREATE POLICY "settings_read" ON settings
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- 관리자만 수정
+CREATE POLICY "settings_write" ON settings
+  FOR ALL USING ((auth.jwt()->'app_metadata'->>'role') = 'admin');
+
+-- ============================================================
 -- 계정 역할 설정 (Supabase Auth에서 계정 생성 후 실행)
 -- ============================================================
 

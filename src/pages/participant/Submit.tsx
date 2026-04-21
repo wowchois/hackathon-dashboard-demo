@@ -4,7 +4,9 @@ import Card from '../../components/ui/Card';
 import { useCurrentParticipant } from '../../hooks/useCurrentParticipant';
 import { apiFetchSubmission, apiUpsertSubmission } from '../../api/submissions';
 import type { Submission } from '../../api/submissions';
-import { CheckCircle2, AlertCircle, ExternalLink, Pencil } from 'lucide-react';
+import { CheckCircle2, AlertCircle, ExternalLink, Lock, Pencil } from 'lucide-react';
+import { useSettings } from '../../hooks/useSettings';
+import { isSubmissionOpen } from '../../api/settings';
 
 function SubmissionReadOnly({ submission }: { submission: Submission }) {
   const githubHref = getSafeHttpsHref(submission.githubUrl);
@@ -69,6 +71,8 @@ function getUrlError(value: string, label: string): string | null {
 
 export default function Submit() {
   const { participant, team, loading: teamLoading } = useCurrentParticipant();
+  const settings = useSettings();
+  const submissionOpen = isSubmissionOpen(settings);
   const isLeader = participant?.isLeader ?? false;
 
   const [submission, setSubmission] = useState<Submission | null>(null);
@@ -193,6 +197,23 @@ export default function Submit() {
     );
   }
 
+  // 제출 기간 마감 + 미제출
+  if (!submissionOpen && !submitted) {
+    return (
+      <ParticipantLayout>
+        <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+          <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+            <Lock className="w-6 h-6 text-gray-400" />
+          </div>
+          <div>
+            <p className="text-base font-semibold text-gray-700">제출 기간이 종료되었습니다</p>
+            <p className="text-sm text-gray-400 mt-1">더 이상 결과물을 제출할 수 없습니다.</p>
+          </div>
+        </div>
+      </ParticipantLayout>
+    );
+  }
+
   return (
     <ParticipantLayout>
       {/* ── 현재 제출 상태 ── */}
@@ -297,15 +318,22 @@ export default function Submit() {
         ) : (
           <>
             <SubmissionReadOnly submission={submission!} />
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[#80766b] hover:bg-[#80766b]/10 rounded-lg transition-colors"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                수정하기
-              </button>
-            </div>
+            {submissionOpen ? (
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[#80766b] hover:bg-[#80766b]/10 rounded-lg transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  수정하기
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3 bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4 text-sm text-gray-600">
+                <Lock className="w-4 h-4 shrink-0 mt-0.5 text-gray-400" />
+                <p>제출 기간이 종료되어 수정할 수 없습니다.</p>
+              </div>
+            )}
             <div className="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-xl p-4 text-sm text-amber-800">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
               <p>팀장만 제출 내용을 수정할 수 있습니다.</p>

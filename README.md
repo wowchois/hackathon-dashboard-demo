@@ -1,7 +1,7 @@
-# 해커톤 운영 대시보드
+# KBDS AI 해커톤 운영 대시보드
 
 React + TypeScript + Vite 기반의 해커톤 운영 웹앱입니다.  
-관리자, 심사위원, 참가자 화면을 분리해 참가자 관리, 팀 편성, 일정 관리, 공지, 제출, 점수 입력 기능을 제공합니다.
+관리자, 심사위원, 참가자 화면을 분리해 참가자 관리, 팀 편성, 일정 관리, 참석 투표, 공지, 제출, 점수 입력 기능을 제공합니다.
 
 ## 기술 스택
 
@@ -12,6 +12,7 @@ React + TypeScript + Vite 기반의 해커톤 운영 웹앱입니다.
 - React Router DOM 7
 - Supabase (DB + Realtime 구독)
 - lucide-react
+- xlsx (엑셀 내보내기/가져오기)
 
 ## 실행 방법
 
@@ -23,12 +24,14 @@ npm install
 
 ### 2. 환경 변수 설정
 
-프로젝트 루트에 `.env.local` 파일을 만들고 아래 값을 설정합니다.
+`.env.example`을 복사해 `.env.development`(개발) 또는 `.env.production`(운영) 파일을 만들고 값을 채웁니다.
 
 ```env
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
+
+> **Vercel 배포 시**: 파일 대신 Vercel 대시보드 → Settings → Environment Variables에서 위 두 값을 설정해야 합니다.
 
 ### 3. 개발 서버 실행
 
@@ -41,8 +44,8 @@ npm run dev
 ### 4. 검증
 
 ```bash
-npm run lint
-npm run build
+npm run lint    # ESLint
+npm run build   # tsc + Vite 프로덕션 빌드
 ```
 
 ## 역할 및 권한
@@ -88,7 +91,26 @@ npm run build
 
 - 인라인 그리드 편집 (신규 행 최대 60개까지 동시 추가)
 - 다중 행 동시 편집 및 일괄 저장
+- 목록 정렬: 팀명 오름차순 → 팀장 우선 → 이름 오름차순
+- 이메일 중복 사전 체크 (기존 참가자 + 현재 입력 행 간 교차 검사)
 - 모바일에서 가로 스크롤 그리드 동일하게 동작
+
+#### 엑셀 일괄 등록
+
+관리자 패널 참가자 탭에서 `.xlsx` 파일로 참가자를 일괄 등록할 수 있습니다.
+
+**필수 헤더 (순서 무관, 첫 번째 시트에서 읽음)**
+
+| 헤더명 | 필수 여부 | 설명 |
+|--------|----------|------|
+| `이름` | **필수** | 참가자 이름 |
+| `이메일` | **필수** | 로그인 계정으로 사용, 중복 불가 |
+| `부서` | 선택 | 소속 부서 |
+| `직급` | 선택 | 직급/직책 |
+
+> - 팀 배정·팀장 여부·상태는 엑셀로 지정할 수 없으며, 등록 후 화면에서 직접 수정합니다.  
+> - 비밀번호는 서버의 `IMPORT_DEFAULT_PASSWORD` 환경 변수 값으로 자동 설정됩니다.  
+> - 한 번에 최대 60행까지 반영됩니다.
 
 ### 관리자 — 팀 관리
 
@@ -102,6 +124,10 @@ npm run build
 - Stepper UI로 마일스톤 추가/수정/삭제
 - `is_public` 설정 — 참가자 화면에 공개 일정만 표시, 비공개는 관리자만 확인
 - 완료 여부는 DB 저장 없이 프론트에서 `date < 오늘`로 계산
+- 각 일정의 **참석 명단 보기** 버튼으로 투표 참석자 목록 조회 가능
+  - 참석자 명단: 이름(팀장 배지) / 팀 / 부서 / 직급
+  - 10명 이상이면 테이블 스크롤, 컬럼 헤더 고정
+  - **엑셀 다운로드**: 참석자만, 컬럼 = 이름 / 팀장여부 / 팀 / 부서 / 직급 / 투표일시
 
 ### 관리자 — 공지 관리
 
@@ -114,11 +140,16 @@ npm run build
 - 심사위원 평균으로 집계, 팀별/전체 저장
 - 관리자는 점수 입력 불가 — 버튼 비활성화 및 안내 토스트 표시
 
-### 참가자 — 일정
+### 참가자 — 일정 & 참석 투표
 
 - 공개 마일스톤만 표시
 - D-day 카드, 전체 진행률 바, 완료/진행 중/예정 상태 시각화
-- 관리자가 일정 변경 시 네비게이션에 빨간 점 → 페이지 방문 시 자동 소멸
+- 일정 변경 시 네비게이션에 빨간 점 → 페이지 방문 시 자동 소멸
+- **참석 투표** (투표 가능 기간: 일정 7일 전 ~ 당일 마감)
+  - 평일 일정: 당일 **오후 6시 KST** 마감
+  - 주말 일정: 당일 **오전 10시 KST** 마감
+  - 투표 후 결과 즉시 반영 (낙관적 업데이트) + "투표되었습니다" 성공 토스트
+  - 투표 완료 후 버튼 잠금 → **재투표** 링크로 재입력 가능
 
 ### 참가자 — 공지사항
 
@@ -126,11 +157,63 @@ npm run build
 - 오늘 등록된 공지에 NEW 뱃지 (다음 날 자정 자동 소멸)
 - 새 공지 추가 시 네비게이션에 빨간 점 → 페이지 방문 시 자동 소멸 (수정/삭제는 미표시)
 
+### 참가자 — 제출하기
+
+- **팀장만** 제출 및 수정 가능
+- 팀원 화면: "팀장만 제출 및 수정이 가능합니다" 안내 문구 표시
+- 팀장이 이미 제출한 경우: 제출 내용 조회 + **수정하기** 버튼 제공
+- 수정 모드에서 취소 시 기존 제출 내용으로 복원
+
+### 팀장 — 팀원 추가
+
+- 팀장은 자신의 팀에 직접 팀원을 추가할 수 있음
+- 잠긴 팀에는 추가 불가 (관리자 문의 안내)
+- 팀 최대 인원 초과 시 추가 불가
+
+## 데이터베이스
+
+Supabase를 사용하며 마이그레이션 쿼리는 `supabase/prd_query.sql`에 있습니다.
+
+### 참석 투표 테이블
+
+```sql
+CREATE TABLE milestone_attendances (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  milestone_id   uuid NOT NULL REFERENCES milestones(id) ON DELETE CASCADE,
+  participant_id uuid NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+  attending      boolean NOT NULL,
+  updated_at     timestamptz DEFAULT now(),
+  UNIQUE(milestone_id, participant_id)
+);
+ALTER TABLE milestone_attendances ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "read" ON milestone_attendances
+  FOR SELECT USING (auth.role() = 'authenticated');
+```
+
+## Edge Functions (`supabase/functions/participant-admin`)
+
+| action | 권한 | 설명 |
+|--------|------|------|
+| `create` | admin, 팀장 | 참가자 생성 (auth user + DB 행 동시 생성) |
+| `update` | admin | 참가자 정보 수정 |
+| `delete` | admin | 참가자 삭제 (auth user + DB 행 동시 삭제) |
+| `reset-password` | admin | 비밀번호 초기화 (`IMPORT_DEFAULT_PASSWORD`로 재설정) |
+| `vote-attendance` | participant | 참석 투표 (투표 기간 서버 측 KST 검증 후 upsert) |
+
+> **CORS**: `corsHeaders`의 `Access-Control-Allow-Origin`을 실제 운영 도메인으로 변경 후 배포해야 합니다.
+
 ## 프로젝트 구조
 
 ```
 src/
-  api/           # Supabase CRUD 함수 (milestones, notices, participants, scores, submissions, teams)
+  api/           # Supabase CRUD 함수
+                 #   attendances.ts   — 참석 투표 조회/제출
+                 #   milestones.ts
+                 #   notices.ts
+                 #   participants.ts
+                 #   scores.ts
+                 #   submissions.ts
+                 #   teams.ts
   components/
     layout/      # AdminLayout, ParticipantLayout
     ui/          # Card, Button, Badge, StatCard
@@ -143,7 +226,8 @@ src/
     mockData.ts       # 공통 타입 정의 (Notice, Milestone 등)
     scoreStore.ts     # SCORE_CRITERIA, 점수 타입
     hackathonStore.ts
-  hooks/             # useXxx 데이터 훅 — Supabase Realtime 구독, { data, refetch } 반환
+  hooks/             # useXxx 데이터 훅 — Supabase Realtime 구독
+                     #   useMyAttendances.ts  — milestone_attendances 실시간 구독
   lib/
     supabase.ts
   pages/
@@ -151,6 +235,10 @@ src/
     participant/
   App.tsx
   main.tsx
+supabase/
+  functions/
+    participant-admin/   # Edge Function
+  prd_query.sql          # DB 마이그레이션 쿼리
 ```
 
 ## 상태 관리 규칙
@@ -164,9 +252,10 @@ src/
 - 자동 매칭 대상: `approved && team === ''` 참가자만
 - 잠금된 팀은 수정/삭제/자동매칭 배정 불가
 - 잠금된 팀 소속 참가자는 팀 변경/삭제 불가
+- 팀 최대 인원: 5명
 
 ## 참고
 
-- 모든 데이터는 Supabase를 통해 읽기/쓰기합니다.
 - 각 `useXxx` 훅은 고유한 채널명으로 Supabase Realtime을 구독합니다 (동일 훅 다중 인스턴스 충돌 방지).
-- 날짜 비교는 브라우저 로컬 시간 기준으로 처리합니다 (KST 자정 기준 동작).
+- `isDone` (마일스톤 완료 여부)은 DB에 저장하지 않고 프론트에서 `date < 오늘`로 계산합니다.
+- 참석 투표 마감 시간은 서버(Edge Function)와 프론트 모두 KST 기준으로 동일하게 계산합니다.

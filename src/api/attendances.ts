@@ -92,7 +92,8 @@ export async function apiFetchMilestoneAttendances(milestoneId: string): Promise
         teams ( name )
       )
     `)
-    .eq('milestone_id', milestoneId);
+    .eq('milestone_id', milestoneId)
+    .eq('attending', true);
   if (error) throw error;
   return (data as unknown as DBAttendanceRow[])
     .map((row) => ({

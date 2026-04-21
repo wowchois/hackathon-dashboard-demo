@@ -4,7 +4,10 @@ import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import { useParticipants } from '../../hooks/useParticipants';
 import { useCurrentParticipant } from '../../hooks/useCurrentParticipant';
+import { useScores } from '../../hooks/useScores';
+import { useSettings } from '../../hooks/useSettings';
 import { CheckCircle2, Clock, Crown, Lock, Plus, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { createParticipantWithAuth } from '../../data/hackathonStore';
 
 function Initials({ name }: { name: string }) {
@@ -29,6 +32,8 @@ const TEAM_MEMBER_LIMIT_MESSAGE = `팀은 최대 ${MAX_TEAM_MEMBERS}명까지 �
 export default function ParticipantDashboard() {
   const { data: participants, upsertLocal } = useParticipants();
   const { participant, team, loading } = useCurrentParticipant();
+  const allScores = useScores();
+  const settings = useSettings();
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showLockAlert, setShowLockAlert] = useState(false);
@@ -61,6 +66,10 @@ export default function ParticipantDashboard() {
 
   const submitStatus = team.submit_status;
   const submitted = submitStatus === 'submitted';
+
+  const myScore = allScores.find((s) => s.teamId === team.id);
+  const isEvaluated = settings.scoresPublished && !!myScore && myScore.judgeCount > 0;
+  const displayBadgeStatus = isEvaluated ? 'evaluated' : submitStatus;
 
   const openAddModal = () => {
     if (myMembers.length >= MAX_TEAM_MEMBERS) {
@@ -119,8 +128,15 @@ export default function ParticipantDashboard() {
             <h1 className="text-xl font-bold text-gray-800">{team.name}</h1>
             <p className="text-sm text-gray-400 mt-0.5">팀원 {myMembers.length}명</p>
           </div>
-          <Badge status={submitStatus} />
+          <Badge status={displayBadgeStatus} />
         </div>
+        {isEvaluated && (
+          <p className="mt-3 pt-3 border-t border-gray-100 text-xs text-indigo-600">
+            <Link to="/participant/scores" className="font-medium underline underline-offset-2">
+              🏆 심사가 완료됐어요. 우리 팀 순위 보러 가기
+            </Link>
+          </p>
+        )}
       </Card>
 
       {/* ── 팀원 목록 ── */}
@@ -175,7 +191,7 @@ export default function ParticipantDashboard() {
       </Card>
 
       {/* ── 제출 현황 요약 ── */}
-      <Card title="제출 현황">
+      <Card title="제출 현황" className="mb-5">
         <div
           className={`flex items-center gap-4 p-4 rounded-xl border ${
             submitted

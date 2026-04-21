@@ -6,10 +6,9 @@ import { useTeams } from '../../hooks/useTeams';
 import { useScores } from '../../hooks/useScores';
 import { useAllJudgeScores } from '../../hooks/useAllJudgeScores';
 import { SCORE_CRITERIA } from '../../data/scoreStore';
+import { useSettings } from '../../hooks/useSettings';
 import { useAuth } from '../../contexts/useAuth';
 import { Trophy, Pencil, ChevronDown, ChevronUp, Users } from 'lucide-react';
-
-const MAX_SCORE = 100;
 
 export default function Scoring() {
   const teams = useTeams();
@@ -20,6 +19,14 @@ export default function Scoring() {
   const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
   const [toast, setToast] = useState('');
 
+  const settings = useSettings();
+  const criteriaMax: Record<string, number> = {
+    creativity: settings.creativityMax,
+    practicality: settings.practicalityMax,
+    completion: settings.completionMax,
+    presentation: settings.presentationMax,
+  };
+  const totalMax = settings.creativityMax + settings.practicalityMax + settings.completionMax + settings.presentationMax;
   const isAdmin = user?.role === 'admin';
 
   const showToast = (msg: string) => {
@@ -91,7 +98,7 @@ export default function Scoring() {
           const color = colorMap[c.key];
           return (
             <div key={c.key} className={`${color.bg} rounded-xl p-3 sm:p-5 text-center`}>
-              <p className={`text-2xl sm:text-3xl font-bold ${color.text}`}>{c.max}</p>
+              <p className={`text-2xl sm:text-3xl font-bold ${color.text}`}>{criteriaMax[c.key]}</p>
               <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
                 {c.label}<span className="hidden sm:inline"> 점</span>
               </p>
@@ -323,7 +330,7 @@ export default function Scoring() {
         <div className="space-y-4">
           {ranked.map((row) => {
             const isFirst = row.rank === 1;
-            const pct = Math.round((row.total / MAX_SCORE) * 100);
+            const pct = totalMax > 0 ? Math.round((row.total / totalMax) * 100) : 0;
             return (
               <div key={row.teamId}>
                 <div className="flex items-center justify-between mb-1.5 text-sm">
@@ -333,7 +340,7 @@ export default function Scoring() {
                     <span className="text-xs text-gray-400">({row.judgeCount}명 입력)</span>
                   </div>
                   <span className="text-gray-400 text-xs">
-                    {row.total > 0 ? `평균 ${row.total} / ${MAX_SCORE}점` : '미입력'}
+                    {row.total > 0 ? `평균 ${row.total} / ${totalMax}점` : '미입력'}
                   </span>
                 </div>
                 <div className="h-7 bg-gray-100 rounded-lg overflow-hidden">
@@ -349,7 +356,7 @@ export default function Scoring() {
           })}
         </div>
         <p className="text-xs text-gray-400 mt-4 text-right">
-          만점: 창의성/독창성 {SCORE_CRITERIA[0].max} + 실용성 {SCORE_CRITERIA[1].max} + 완성도 {SCORE_CRITERIA[2].max} + 발표 {SCORE_CRITERIA[3].max} = {MAX_SCORE}점 (심사위원 평균)
+          만점: {SCORE_CRITERIA.map((c) => `${c.label} ${criteriaMax[c.key]}`).join(' + ')} = {totalMax}점 (심사위원 평균)
         </p>
       </Card>
       {toast && (

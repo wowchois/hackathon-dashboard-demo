@@ -19,8 +19,13 @@ export default function ProtectedRoute({
   const { user, loading } = useAuth();
   const { pathname } = useLocation();
 
-  // 세션 로딩 중 — 빈 화면 (짧은 순간이라 스피너 생략)
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-7 h-7 rounded-full border-2 border-gray-200 border-t-gray-500 animate-spin" />
+      </div>
+    );
+  }
 
   // 미인증
   if (!user) return <Navigate to={redirectTo} replace />;

@@ -53,6 +53,7 @@ interface TeamAssignmentState {
   search: string;
   selectedParticipantIds: string[];
   checkedCandidateIds: string[];
+  leaderId: string | null;
 }
 
 interface ToastState {
@@ -88,6 +89,7 @@ const EMPTY_TEAM_ASSIGNMENT: TeamAssignmentState = {
   search: '',
   selectedParticipantIds: [],
   checkedCandidateIds: [],
+  leaderId: null,
 };
 
 const MAX_NEW_ROWS = 60;
@@ -769,6 +771,7 @@ export default function Participants() {
         .filter((participant) => participant.team === teamId)
         .map((participant) => participant.id),
       checkedCandidateIds: [],
+      leaderId: displayParticipants.find((p) => p.team === teamId && p.isLeader)?.id ?? null,
     });
     setTModal({ mode: 'edit', id: teamId });
   };
@@ -822,6 +825,7 @@ export default function Participants() {
       ...prev,
       selectedParticipantIds: prev.selectedParticipantIds.filter((id) => id !== participantId),
       checkedCandidateIds: prev.checkedCandidateIds.filter((id) => id !== participantId),
+      leaderId: prev.leaderId === participantId ? null : prev.leaderId,
     }));
   };
 
@@ -854,7 +858,10 @@ export default function Participants() {
         const createdTeam = await addTeam({ name: tForm.name.trim(), idea: tForm.idea.trim() });
         const assignmentResults = await Promise.allSettled(
           tAssignment.selectedParticipantIds.map((participantId) =>
-            updateParticipant(participantId, { team: createdTeam.id })
+            updateParticipant(participantId, {
+              team: createdTeam.id,
+              isLeader: participantId === tAssignment.leaderId,
+            })
           )
         );
         const failedAssignments = assignmentResults.filter(
@@ -890,7 +897,7 @@ export default function Participants() {
           const updated = new Map(prev.map((p) => [p.id, p]));
           for (const id of tAssignment.selectedParticipantIds) {
             const base = displayParticipants.find((p) => p.id === id);
-            if (base) updated.set(id, { ...base, team: createdTeam.id });
+            if (base) updated.set(id, { ...base, team: createdTeam.id, isLeader: id === tAssignment.leaderId });
           }
           return Array.from(updated.values());
         });
@@ -899,7 +906,6 @@ export default function Participants() {
           .filter((participant) => participant.team === tModal.id)
           .map((participant) => participant.id);
         const nextMemberIds = tAssignment.selectedParticipantIds;
-        const toAssign = nextMemberIds.filter((id) => !previousMemberIds.includes(id));
         const toRemove = previousMemberIds.filter((id) => !nextMemberIds.includes(id));
 
         await updateTeam(tModal.id, {
@@ -907,8 +913,13 @@ export default function Participants() {
           idea: tForm.idea.trim(),
         });
         const assignmentResults = await Promise.allSettled([
-          ...toAssign.map((participantId) => updateParticipant(participantId, { team: tModal.id })),
-          ...toRemove.map((participantId) => updateParticipant(participantId, { team: '' })),
+          ...nextMemberIds.map((participantId) =>
+            updateParticipant(participantId, {
+              team: tModal.id,
+              isLeader: participantId === tAssignment.leaderId,
+            })
+          ),
+          ...toRemove.map((participantId) => updateParticipant(participantId, { team: '', isLeader: false })),
         ]);
         const failedAssignments = assignmentResults.filter(
           (result) => result.status === 'rejected'
@@ -928,8 +939,8 @@ export default function Participants() {
         ]);
         setOptimisticParticipants((prev) =>
           prev.map((participant) => {
-            if (toAssign.includes(participant.id)) return { ...participant, team: tModal.id };
-            if (toRemove.includes(participant.id)) return { ...participant, team: '' };
+            if (toRemove.includes(participant.id)) return { ...participant, team: '', isLeader: false };
+            if (nextMemberIds.includes(participant.id)) return { ...participant, team: tModal.id, isLeader: participant.id === tAssignment.leaderId };
             return participant;
           })
         );
@@ -1274,13 +1285,31 @@ export default function Participants() {
                                 {participant.department || '-'} / {participant.position || '-'}
                               </p>
                             </div>
-                            <button
-                              onClick={() => removeSelectedParticipant(participant.id)}
-                              className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-                              title="제거"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                onClick={() =>
+                                  setTAssignment((prev) => ({
+                                    ...prev,
+                                    leaderId: prev.leaderId === participant.id ? null : participant.id,
+                                  }))
+                                }
+                                className={`rounded-lg p-1.5 transition-colors ${
+                                  tAssignment.leaderId === participant.id
+                                    ? 'text-amber-500 hover:bg-amber-50'
+                                    : 'text-gray-300 hover:bg-gray-100 hover:text-gray-400'
+                                }`}
+                                title={tAssignment.leaderId === participant.id ? '팀장 해제' : '팀장 지정'}
+                              >
+                                <Crown className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => removeSelectedParticipant(participant.id)}
+                                className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                                title="제거"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
                         ))
                       )}
@@ -1425,13 +1454,31 @@ export default function Participants() {
                                 {participant.department || '-'} / {participant.position || '-'}
                               </p>
                             </div>
-                            <button
-                              onClick={() => removeSelectedParticipant(participant.id)}
-                              className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-                              title="제거"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                onClick={() =>
+                                  setTAssignment((prev) => ({
+                                    ...prev,
+                                    leaderId: prev.leaderId === participant.id ? null : participant.id,
+                                  }))
+                                }
+                                className={`rounded-lg p-1.5 transition-colors ${
+                                  tAssignment.leaderId === participant.id
+                                    ? 'text-amber-500 hover:bg-amber-50'
+                                    : 'text-gray-300 hover:bg-gray-100 hover:text-gray-400'
+                                }`}
+                                title={tAssignment.leaderId === participant.id ? '팀장 해제' : '팀장 지정'}
+                              >
+                                <Crown className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => removeSelectedParticipant(participant.id)}
+                                className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                                title="제거"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
                         ))
                       )}
@@ -1716,8 +1763,11 @@ function ParticipantEditableRow({
           type="button"
           role="switch"
           aria-checked={draft.form.isLeader}
+          disabled={!draft.form.team}
           onClick={() => onToggleIsLeader(draft.key)}
-          className="flex items-center gap-1.5 text-xs text-gray-500"
+          className={`flex items-center gap-1.5 text-xs text-gray-500 ${
+            !draft.form.team ? 'cursor-not-allowed opacity-40' : ''
+          }`}
         >
           <span
             className={`relative h-5 w-9 rounded-full transition-colors ${
@@ -1915,7 +1965,7 @@ function TeamsTab({
             <ul className="list-disc space-y-1.5 pl-5 text-sm leading-6 text-gray-600">
               <li>팀 추가 또는 수정으로 승인된 참가자를 직접 배정할 수 있습니다.</li>
               <li>잠금된 팀은 수정, 삭제, 참가자 배정 변경이 제한됩니다.</li>
-              <li>팀장은 참가자 관리 탭에서 팀별 1명만 지정할 수 있습니다.</li>
+              <li>팀장은 팀 추가/수정에서 팀별 1명만 지정할 수 있습니다.</li>
             </ul>
           </>
         )}
@@ -1933,7 +1983,12 @@ function TeamsTab({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {teams.map((team) => {
-          const members = participants.filter((participant) => participant.team === team.id);
+          const members = participants
+            .filter((participant) => participant.team === team.id)
+            .sort((a, b) => {
+              if (a.isLeader !== b.isLeader) return a.isLeader ? -1 : 1;
+              return a.name.localeCompare(b.name, 'ko');
+            });
           return (
             <Card key={team.id} className={team.locked ? 'ring-1 ring-amber-200' : ''}>
               <div className="mb-3 flex items-start justify-between">

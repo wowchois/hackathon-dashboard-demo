@@ -2,11 +2,13 @@ import { apiUpsertScore } from '../api/scores';
 
 // ── 평가 기준 ─────────────────────────────────────────────────
 export const SCORE_CRITERIA = [
-  { key: 'creativity'   as const, label: '창의성/독창성', max: 25 },
-  { key: 'practicality' as const, label: '실용성',        max: 25 },
-  { key: 'completion'   as const, label: '완성도',        max: 25 },
-  { key: 'presentation' as const, label: '발표',          max: 25 },
+  { key: 'creativity'   as const, label: '창의성/독창성' },
+  { key: 'practicality' as const, label: '실용성' },
+  { key: 'completion'   as const, label: '완성도' },
+  { key: 'presentation' as const, label: '발표' },
 ] as const;
+
+export type CriterionKey = typeof SCORE_CRITERIA[number]['key'];
 
 // ── 타입 정의 ─────────────────────────────────────────────────
 
