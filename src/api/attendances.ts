@@ -16,6 +16,7 @@ interface DBAttendanceRow {
     email: string;
     department: string;
     position: string;
+    is_leader: boolean;
     teams: { name: string } | null;
   } | null;
 }
@@ -30,6 +31,7 @@ export interface MilestoneAttendance {
   participantEmail: string;
   participantDepartment: string;
   participantPosition: string;
+  isLeader: boolean;
   teamName: string;
 }
 
@@ -86,22 +88,29 @@ export async function apiFetchMilestoneAttendances(milestoneId: string): Promise
         email,
         department,
         position,
+        is_leader,
         teams ( name )
       )
     `)
-    .eq('milestone_id', milestoneId)
-    .order('attending', { ascending: false });
+    .eq('milestone_id', milestoneId);
   if (error) throw error;
-  return (data as unknown as DBAttendanceRow[]).map((row) => ({
-    id: row.id,
-    milestoneId: row.milestone_id,
-    participantId: row.participant_id,
-    attending: row.attending,
-    updatedAt: row.updated_at,
-    participantName: row.participants?.name ?? '',
-    participantEmail: row.participants?.email ?? '',
-    participantDepartment: row.participants?.department ?? '',
-    participantPosition: row.participants?.position ?? '',
-    teamName: row.participants?.teams?.name ?? '-',
-  }));
+  return (data as unknown as DBAttendanceRow[])
+    .map((row) => ({
+      id: row.id,
+      milestoneId: row.milestone_id,
+      participantId: row.participant_id,
+      attending: row.attending,
+      updatedAt: row.updated_at,
+      participantName: row.participants?.name ?? '',
+      participantEmail: row.participants?.email ?? '',
+      participantDepartment: row.participants?.department ?? '',
+      participantPosition: row.participants?.position ?? '',
+      isLeader: row.participants?.is_leader ?? false,
+      teamName: row.participants?.teams?.name ?? '-',
+    }))
+    .sort((a, b) => {
+      if (a.teamName !== b.teamName) return a.teamName.localeCompare(b.teamName, 'ko');
+      if (a.isLeader !== b.isLeader) return a.isLeader ? -1 : 1;
+      return a.participantName.localeCompare(b.participantName, 'ko');
+    });
 }

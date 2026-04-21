@@ -338,7 +338,7 @@ export default function Milestones() {
                       <div className="mt-2.5 pt-2.5 border-t border-gray-100">
                         <button
                           onClick={() => openAttendanceModal(m)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors w-full justify-center"
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 rounded-lg transition-colors w-full justify-center"
                         >
                           <Users className="w-3.5 h-3.5" />
                           참석 명단 보기
@@ -413,7 +413,14 @@ export default function Milestones() {
                   <tbody className="divide-y divide-gray-50">
                     {attendanceData.map((a) => (
                       <tr key={a.id}>
-                        <td className="py-2 pr-3 font-medium text-gray-800">{a.participantName}</td>
+                        <td className="py-2 pr-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-gray-800">{a.participantName}</span>
+                            {a.isLeader && (
+                              <span className="text-[10px] font-semibold px-1 py-0.5 rounded bg-amber-100 text-amber-700 leading-none shrink-0">팀장</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="py-2 pr-3 text-gray-500">{a.teamName}</td>
                         <td className="py-2 pr-3 text-gray-500">{a.participantDepartment || '-'}</td>
                         <td className="py-2 pr-3 text-gray-500">{a.participantPosition || '-'}</td>
