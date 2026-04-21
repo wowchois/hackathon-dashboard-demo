@@ -47,7 +47,7 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-14 h-14 bg-[#80766b]/10 rounded-2xl mb-4">
             <Trophy className="w-7 h-7 text-[#80766b]" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">해커톤 2026</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{new Date().getFullYear()} KBDS AI 해커톤</h1>
           <p className="text-sm text-gray-500 mt-1">계정으로 로그인하세요</p>
         </div>
 

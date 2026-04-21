@@ -71,7 +71,7 @@ function ParticipantLayoutContent({ children }: { children: ReactNode }) {
       <aside className="hidden lg:flex flex-col fixed inset-y-0 left-0 w-60 bg-white border-r border-gray-100 z-30">
         <div className="px-5 py-5 border-b border-gray-100">
           <Link to="/participant" className="text-base font-bold text-[#80766b] tracking-tight">
-            해커톤 2026
+            {new Date().getFullYear()} KBDS AI 해커톤
           </Link>
           <p className="mt-2 text-xs text-gray-500 font-medium">{displayTeam}</p>
           <p className="text-xs text-gray-400">{displayName}</p>
@@ -137,7 +137,7 @@ function ParticipantLayoutContent({ children }: { children: ReactNode }) {
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
-            <p className="text-base font-bold text-[#80766b] tracking-tight">해커톤 2026</p>
+            <p className="text-base font-bold text-[#80766b] tracking-tight">{new Date().getFullYear()} KBDS AI 해커톤</p>
             <p className="text-xs text-gray-500 font-medium mt-0.5">{displayTeam}</p>
             <p className="text-xs text-gray-400">{displayName}</p>
           </div>
@@ -204,7 +204,7 @@ function ParticipantLayoutContent({ children }: { children: ReactNode }) {
             to="/participant"
             className="lg:hidden text-sm font-bold text-[#80766b] tracking-tight"
           >
-            해커톤 2026
+            {new Date().getFullYear()} KBDS AI 해커톤
           </Link>
 
           <div className="hidden lg:flex flex-col leading-none">

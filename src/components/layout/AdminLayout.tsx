@@ -164,7 +164,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 function Logo() {
   return (
     <Link to="/admin" className="text-base font-bold text-[#80766b] tracking-tight">
-      해커톤 2026
+      {new Date().getFullYear()} KBDS AI 해커톤
     </Link>
   );
 }
