@@ -1,0 +1,29 @@
+name: Runner Test
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test-runner:
+    runs-on: [self-hosted, linux]
+
+    steps:
+      - name: Check runner
+        run: |
+          echo "Runner is working"
+          whoami
+          hostname
+          pwd
+          uname -a
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Check repo files
+        run: |
+          ls -al
+          git branch
+          git rev-parse HEAD
