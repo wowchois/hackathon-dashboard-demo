@@ -1,7 +1,43 @@
+import { useState, useCallback } from 'react';
 import ParticipantLayout from '../../components/layout/ParticipantLayout';
 import Card from '../../components/ui/Card';
 import { useMilestones } from '../../hooks/useMilestones';
+import { useCurrentParticipant } from '../../hooks/useCurrentParticipant';
+import { useMyAttendances } from '../../hooks/useMyAttendances';
+import { apiVoteAttendance } from '../../api/attendances';
 import { CheckCircle2, Circle, Loader2 } from 'lucide-react';
+
+// ── 투표 가능 기간 유틸 (KST 기준) ────────────────────────────
+
+function getVotingOpenTime(dateStr: string): Date {
+  const kstMidnight = new Date(`${dateStr}T00:00:00+09:00`);
+  return new Date(kstMidnight.getTime() - 7 * 24 * 60 * 60 * 1000);
+}
+
+function getVotingCloseTime(dateStr: string): Date {
+  // 정오 KST(03:00 UTC)로 파싱하면 UTC 날짜와 KST 날짜가 동일해 getUTCDay()로 요일 판단 가능
+  const dayOfWeek = new Date(`${dateStr}T12:00:00+09:00`).getUTCDay(); // 0=일, 6=토
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  const closeHour = isWeekend ? 10 : 18;
+  return new Date(`${dateStr}T${String(closeHour).padStart(2, '0')}:00:00+09:00`);
+}
+
+function isVotingOpen(dateStr: string): boolean {
+  const now = new Date();
+  return now >= getVotingOpenTime(dateStr) && now <= getVotingCloseTime(dateStr);
+}
+
+function getVoteDeadlineLabel(dateStr: string): string {
+  const d = new Date(`${dateStr}T12:00:00+09:00`);
+  const month = d.getUTCMonth() + 1;
+  const day = d.getUTCDate();
+  const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+  const dow = d.getUTCDay();
+  const isWeekend = dow === 0 || dow === 6;
+  return `${month}/${day}(${weekdays[dow]}) ${isWeekend ? '오전 10시' : '오후 6시'}`;
+}
+
+// ── D-day 유틸 ────────────────────────────────────────────────
 
 function getDday(dateStr: string): number {
   const today = new Date();
@@ -17,19 +53,38 @@ function formatDday(days: number): string {
   return `D+${Math.abs(days)}`;
 }
 
+// ── 메인 컴포넌트 ────────────────────────────────────────────
+
 export default function Timeline() {
   const { data: allMilestones } = useMilestones();
-  const milestones = allMilestones.filter((m) => m.isPublic);
+  const { participant } = useCurrentParticipant();
+  const attendanceMap = useMyAttendances(participant?.id);
 
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const milestones = allMilestones.filter((m) => m.isPublic);
   const doneMilestones = milestones.filter((m) => m.isDone);
   const progress = milestones.length > 0
     ? Math.round((doneMilestones.length / milestones.length) * 100)
     : 0;
 
-  // 첫 번째 미완료 마일스톤 = 현재 진행 중
   const currentIdx = milestones.findIndex((m) => !m.isDone);
   const nextMilestone = currentIdx !== -1 ? milestones[currentIdx] : null;
   const ddayValue = nextMilestone ? getDday(nextMilestone.date) : null;
+
+  const handleVote = useCallback(async (milestoneId: string, attending: boolean) => {
+    if (savingId) return;
+    setSavingId(milestoneId);
+    setErrorMsg(null);
+    try {
+      await apiVoteAttendance(milestoneId, attending);
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : '투표에 실패했습니다.');
+    } finally {
+      setSavingId(null);
+    }
+  }, [savingId]);
 
   return (
     <ParticipantLayout>
@@ -74,6 +129,10 @@ export default function Timeline() {
             const isCurrent = idx === currentIdx;
             const isDone = milestone.isDone;
             const isLast = idx === milestones.length - 1;
+            const votingOpen = isVotingOpen(milestone.date);
+            const myVote = attendanceMap.get(milestone.id); // true | false | undefined
+            const hasVote = attendanceMap.has(milestone.id);
+            const isSaving = savingId === milestone.id;
 
             return (
               <li key={milestone.id} className="flex gap-4">
@@ -88,22 +147,12 @@ export default function Timeline() {
                         : 'bg-white border-gray-300'
                     }`}
                   >
-                    {isDone && (
-                      <CheckCircle2 className="w-full h-full text-white" strokeWidth={3} />
-                    )}
-                    {isCurrent && (
-                      <div className="w-2 h-2 bg-indigo-500 rounded-full m-auto mt-[3px]" />
-                    )}
-                    {!isDone && !isCurrent && (
-                      <Circle className="w-full h-full text-gray-300" />
-                    )}
+                    {isDone && <CheckCircle2 className="w-full h-full text-white" strokeWidth={3} />}
+                    {isCurrent && <div className="w-2 h-2 bg-indigo-500 rounded-full m-auto mt-[3px]" />}
+                    {!isDone && !isCurrent && <Circle className="w-full h-full text-gray-300" />}
                   </div>
                   {!isLast && (
-                    <div
-                      className={`w-0.5 flex-1 my-1 ${
-                        isDone ? 'bg-green-300' : 'bg-gray-200'
-                      }`}
-                    />
+                    <div className={`w-0.5 flex-1 my-1 ${isDone ? 'bg-green-300' : 'bg-gray-200'}`} />
                   )}
                 </div>
 
@@ -118,14 +167,11 @@ export default function Timeline() {
                         : 'bg-white border-gray-100'
                     }`}
                   >
+                    {/* 제목 + 상태 배지 */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <p
                         className={`text-sm font-medium ${
-                          isDone
-                            ? 'line-through text-gray-400'
-                            : isCurrent
-                            ? 'text-indigo-700'
-                            : 'text-gray-700'
+                          isDone ? 'line-through text-gray-400' : isCurrent ? 'text-indigo-700' : 'text-gray-700'
                         }`}
                       >
                         {milestone.title}
@@ -136,21 +182,63 @@ export default function Timeline() {
                           진행 중
                         </span>
                       )}
-                      {isDone && (
-                        <span className="text-xs text-green-600 font-medium shrink-0">완료</span>
-                      )}
+                      {isDone && <span className="text-xs text-green-600 font-medium shrink-0">완료</span>}
                     </div>
-                    <p
-                      className={`text-xs mt-1 ${
-                        isDone ? 'text-gray-300' : isCurrent ? 'text-indigo-400' : 'text-gray-400'
-                      }`}
-                    >
+
+                    {/* 날짜 */}
+                    <p className={`text-xs mt-1 ${isDone ? 'text-gray-300' : isCurrent ? 'text-indigo-400' : 'text-gray-400'}`}>
                       {milestone.date}
                     </p>
+
+                    {/* 설명 */}
                     {milestone.description && (
                       <p className={`text-xs mt-1 leading-relaxed ${isDone ? 'text-gray-300' : 'text-gray-400'}`}>
                         {milestone.description}
                       </p>
+                    )}
+
+                    {/* ── 투표 영역 ── */}
+                    {(votingOpen || hasVote) && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        {votingOpen ? (
+                          <>
+                            <p className="text-xs text-gray-400 mb-2">
+                              참석 여부 · 마감 {getVoteDeadlineLabel(milestone.date)}
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleVote(milestone.id, true)}
+                                disabled={isSaving}
+                                className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 ${
+                                  myVote === true
+                                    ? 'bg-green-500 text-white'
+                                    : 'border border-green-300 text-green-600 hover:bg-green-50'
+                                }`}
+                              >
+                                {isSaving && myVote !== true ? '...' : '참석'}
+                              </button>
+                              <button
+                                onClick={() => handleVote(milestone.id, false)}
+                                disabled={isSaving}
+                                className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 ${
+                                  myVote === false
+                                    ? 'bg-red-400 text-white'
+                                    : 'border border-red-200 text-red-400 hover:bg-red-50'
+                                }`}
+                              >
+                                {isSaving && myVote !== false ? '...' : '불참'}
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-gray-400">내 투표:</span>
+                            <span className={`text-xs font-medium ${myVote === true ? 'text-green-600' : 'text-red-400'}`}>
+                              {myVote === true ? '참석 ✓' : '불참'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -159,6 +247,13 @@ export default function Timeline() {
           })}
         </ol>
       </Card>
+
+      {/* ── 투표 에러 토스트 ── */}
+      {errorMsg && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 lg:bottom-6 z-50 bg-red-500 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg max-w-xs text-center">
+          {errorMsg}
+        </div>
+      )}
     </ParticipantLayout>
   );
 }
