@@ -205,11 +205,7 @@ export default function Submit() {
           <SubmissionReadOnly submission={submission!} />
           <div className="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-xl p-4 text-sm text-amber-800">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
-            <p>
-              제출 내용 수정이 필요한 경우 운영진에게 문의해주세요.
-              <br />
-              <span className="text-amber-600 text-xs">contact@hackathon2026.com</span>
-            </p>
+            <p>팀장만 제출 내용을 수정할 수 있습니다.</p>
           </div>
         </>
       ) : (
@@ -220,7 +216,7 @@ export default function Submit() {
             <ul className="space-y-1 text-xs leading-relaxed">
               <li>• GitHub 저장소는 <strong>public</strong>으로 설정해주세요.</li>
               <li>• 발표 자료는 심사위원이 접근 가능한 링크여야 합니다.</li>
-              <li>• 제출 후 수정은 운영진에게 별도 문의가 필요합니다.</li>
+              <li>• 제출 후에도 팀장이 직접 수정할 수 있습니다.</li>
               <li>• 제출 마감 이후 접수된 결과물은 심사에서 제외될 수 있습니다.</li>
             </ul>
           </div>
