@@ -132,13 +132,12 @@ export default function Milestones() {
 
   const handleExcelDownload = () => {
     if (!attendanceModal) return;
-    const attending = attendanceData.filter((a) => a.attending);
-    const rows = attending.map((a) => ({
+    const rows = attendanceData.map((a) => ({
       이름: a.participantName,
+      팀장여부: a.isLeader ? '팀장' : '',
       팀: a.teamName,
       부서: a.participantDepartment,
       직급: a.participantPosition,
-      참석여부: '참석',
       투표일시: a.updatedAt,
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -370,15 +369,14 @@ export default function Milestones() {
                 <h3 className="text-sm font-semibold text-gray-800">{attendanceModal.title} — 참석 명단</h3>
                 {!loadingAttendance && (
                   <p className="text-xs text-gray-400 mt-0.5">
-                    참석 {attendanceData.filter((a) => a.attending).length}명 ·
-                    불참 {attendanceData.filter((a) => !a.attending).length}명
+                    참석 {attendanceData.length}명
                   </p>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleExcelDownload}
-                  disabled={loadingAttendance || attendanceData.filter((a) => a.attending).length === 0}
+                  disabled={loadingAttendance || attendanceData.length === 0}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -394,45 +392,41 @@ export default function Milestones() {
             </div>
 
             {/* 내용 */}
-            <div className="overflow-y-auto flex-1 px-5 py-4">
+            <div className="px-5 py-4">
               {loadingAttendance ? (
                 <p className="text-sm text-gray-400 text-center py-10">불러오는 중...</p>
               ) : attendanceData.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-10">투표한 참가자가 없습니다.</p>
+                <p className="text-sm text-gray-400 text-center py-10">참석 투표한 참가자가 없습니다.</p>
               ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-xs font-medium text-gray-400 border-b border-gray-100">
-                      <th className="pb-2 pr-3">이름</th>
-                      <th className="pb-2 pr-3">팀</th>
-                      <th className="pb-2 pr-3">부서</th>
-                      <th className="pb-2 pr-3">직급</th>
-                      <th className="pb-2">참석</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {attendanceData.map((a) => (
-                      <tr key={a.id}>
-                        <td className="py-2 pr-3">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-medium text-gray-800">{a.participantName}</span>
-                            {a.isLeader && (
-                              <span className="text-[10px] font-semibold px-1 py-0.5 rounded bg-amber-100 text-amber-700 leading-none shrink-0">팀장</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-2 pr-3 text-gray-500">{a.teamName}</td>
-                        <td className="py-2 pr-3 text-gray-500">{a.participantDepartment || '-'}</td>
-                        <td className="py-2 pr-3 text-gray-500">{a.participantPosition || '-'}</td>
-                        <td className="py-2">
-                          <span className={`text-xs font-medium ${a.attending ? 'text-green-600' : 'text-red-400'}`}>
-                            {a.attending ? '참석' : '불참'}
-                          </span>
-                        </td>
+                <div className="overflow-y-auto max-h-[380px]">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-white">
+                      <tr className="text-left text-xs font-medium text-gray-400 border-b border-gray-100">
+                        <th className="pb-2 pr-3">이름</th>
+                        <th className="pb-2 pr-3">팀</th>
+                        <th className="pb-2 pr-3">부서</th>
+                        <th className="pb-2">직급</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {attendanceData.map((a) => (
+                        <tr key={a.id}>
+                          <td className="py-2 pr-3">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium text-gray-800">{a.participantName}</span>
+                              {a.isLeader && (
+                                <span className="text-[10px] font-semibold px-1 py-0.5 rounded bg-amber-100 text-amber-700 leading-none shrink-0">팀장</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-2 pr-3 text-gray-500">{a.teamName}</td>
+                          <td className="py-2 pr-3 text-gray-500">{a.participantDepartment || '-'}</td>
+                          <td className="py-2 text-gray-500">{a.participantPosition || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           </div>
