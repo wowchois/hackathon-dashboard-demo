@@ -110,7 +110,7 @@ function ParticipantLayoutContent({ children }: { children: ReactNode }) {
         <div className="px-3 py-4 border-t border-gray-100">
           <div className="px-3 mb-2">
             <p className="text-xs font-medium text-gray-700 truncate">{displayName}</p>
-            <p className="text-xs text-gray-400 truncate">{user?.email}</p>
+            <p className="text-xs text-gray-400 truncate">{user?.employeeId}</p>
           </div>
           <button
             onClick={handleLogout}

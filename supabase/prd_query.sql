@@ -283,3 +283,38 @@ CREATE POLICY "leader_update" ON submissions
       WHERE user_id = auth.uid() AND is_leader = true
     )
   );
+
+-- ============================================================
+-- MIGRATION: 이메일 → 사번 로그인 방식 변경
+-- 사번 형식: 알파벳 1자(대소문자 무관) + 숫자 6자리, 저장 시 대문자 정규화
+-- ============================================================
+
+-- 1. participants 테이블에 employee_id 컬럼 추가
+ALTER TABLE participants
+  ADD COLUMN IF NOT EXISTS employee_id text NOT NULL DEFAULT '';
+
+-- 2. 기존 @hackathon.com 계정: email에서 사번 추출 후 대문자 정규화
+UPDATE participants
+  SET employee_id = upper(split_part(email, '@', 1))
+  WHERE email LIKE '%@hackathon.com'
+    AND employee_id = '';
+
+-- 3. 형식 CHECK constraint (대문자 정규화 후 적용)
+ALTER TABLE participants
+  ADD CONSTRAINT chk_employee_id
+  CHECK (employee_id ~ '^[A-Z][0-9]{6}$');
+
+-- 4. employee_id 중복 방지 인덱스 (대문자 정규화 저장 기준)
+CREATE UNIQUE INDEX IF NOT EXISTS participants_employee_id_idx
+  ON participants(employee_id);
+
+-- ============================================================
+-- (운영) admin / judge auth 계정 email 변경
+-- Supabase 콘솔 > SQL Editor에서 계정 생성 후 직접 실행
+-- ============================================================
+-- UPDATE auth.users
+--   SET email = 'A000001@hackathon.com'
+--   WHERE email = 'admin@xxx.com';
+-- UPDATE auth.users
+--   SET email = 'J000001@hackathon.com'
+--   WHERE email = 'judge1@xxx.com';

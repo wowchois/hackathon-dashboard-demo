@@ -9,7 +9,7 @@ export type UserRole = 'admin' | 'judge' | 'participant';
 
 export interface AuthUser {
   id: string;
-  email: string;
+  employeeId: string; // 사번: 알파벳 1자 + 숫자 6자리 (대문자 정규화), 예: A123456
   role: UserRole;
   name: string;
   mustChangePassword: boolean;
@@ -19,7 +19,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (employeeId: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -34,11 +34,16 @@ function toAuthUser(user: User): AuthUser {
   // name, mustChangePassword: user_metadata (사용자/서버 모두 수정 가능)
   const appMeta = user.app_metadata ?? {};
   const userMeta = user.user_metadata ?? {};
+  // 이메일 {사번}@hackathon.com 형식에서 사번 추출 후 대문자 정규화
+  const rawEmail = user.email ?? '';
+  const employeeId = rawEmail.endsWith('@hackathon.com')
+    ? rawEmail.slice(0, rawEmail.lastIndexOf('@')).toUpperCase()
+    : rawEmail.toUpperCase();
   return {
     id: user.id,
-    email: user.email ?? '',
+    employeeId,
     role: ((appMeta.role ?? userMeta.role) as UserRole) ?? 'participant',
-    name: (userMeta.name as string) ?? user.email ?? '',
+    name: (userMeta.name as string) ?? employeeId,
     mustChangePassword: (userMeta.must_change_password as boolean) ?? false,
   };
 }
@@ -65,7 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
+  const signIn = async (employeeId: string, password: string): Promise<{ error: string | null }> => {
+    const email = `${employeeId.toUpperCase()}@hackathon.com`;
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
     return { error: null };

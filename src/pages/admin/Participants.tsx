@@ -36,7 +36,7 @@ type Tab = 'participants' | 'teams';
 
 interface ParticipantFormState {
   name: string;
-  email: string;
+  employeeId: string; // 사번: 알파벳 1자 + 숫자 6자리
   team: string;
   department: string;
   position: string;
@@ -72,13 +72,15 @@ interface ParticipantDraftRow {
 
 const EMPTY_PARTICIPANT_FORM: ParticipantFormState = {
   name: '',
-  email: '',
+  employeeId: '',
   team: '',
   department: '',
   position: '',
   status: 'pending',
   isLeader: false,
 };
+
+const EMPLOYEE_ID_REGEX = /^[A-Za-z][0-9]{6}$/;
 
 const EMPTY_TEAM_FORM: TeamFormState = {
   name: '',
@@ -178,7 +180,7 @@ async function parseExcelFile(
     mode: 'new',
     form: {
       name: String(row['이름'] ?? '').trim(),
-      email: String(row['이메일'] ?? '').trim(),
+      employeeId: String(row['사번'] ?? '').trim(),
       department: String(row['부서'] ?? '').trim(),
       position: String(row['직급'] ?? '').trim(),
       team: '',
@@ -201,14 +203,16 @@ function validateParticipantDraft(
   const nextErrors: Partial<Record<keyof ParticipantFormState, string>> = {};
 
   if (!draft.form.name.trim()) nextErrors.name = '이름을 입력해 주세요.';
-  if (!draft.form.email.trim()) {
-    nextErrors.email = '이메일을 입력해 주세요.';
+  if (!draft.form.employeeId.trim()) {
+    nextErrors.employeeId = '사번을 입력해 주세요.';
+  } else if (!EMPLOYEE_ID_REGEX.test(draft.form.employeeId.trim())) {
+    nextErrors.employeeId = '사번 형식이 올바르지 않습니다. (알파벳 1자 + 숫자 6자리, 예: A123456)';
   } else {
-    const emailLower = draft.form.email.trim().toLowerCase();
+    const idUpper = draft.form.employeeId.trim().toUpperCase();
     const isDuplicate = existingParticipants.some(
-      (p) => p.email.toLowerCase() === emailLower && p.id !== draft.id
+      (p) => p.employeeId.toUpperCase() === idUpper && p.id !== draft.id
     );
-    if (isDuplicate) nextErrors.email = '이미 등록된 이메일입니다.';
+    if (isDuplicate) nextErrors.employeeId = '이미 등록된 사번입니다.';
   }
 
   const selectedTeam = teams.find((team) => team.id === draft.form.team);
@@ -219,17 +223,17 @@ function validateParticipantDraft(
   return nextErrors;
 }
 
-function getDraftEmailDuplicateKeys(drafts: ParticipantDraftRow[]): Set<string> {
-  const emailToKeys = new Map<string, string[]>();
+function getDraftEmployeeIdDuplicateKeys(drafts: ParticipantDraftRow[]): Set<string> {
+  const idToKeys = new Map<string, string[]>();
   for (const draft of drafts) {
-    const email = draft.form.email.trim().toLowerCase();
-    if (!email) continue;
-    const keys = emailToKeys.get(email) ?? [];
+    const id = draft.form.employeeId.trim().toUpperCase();
+    if (!id) continue;
+    const keys = idToKeys.get(id) ?? [];
     keys.push(draft.key);
-    emailToKeys.set(email, keys);
+    idToKeys.set(id, keys);
   }
   return new Set(
-    Array.from(emailToKeys.values())
+    Array.from(idToKeys.values())
       .filter((keys) => keys.length > 1)
       .flat()
   );
@@ -321,7 +325,7 @@ export default function Participants() {
       if (!query) return true;
       return (
         participant.name.toLowerCase().includes(query) ||
-        participant.email.toLowerCase().includes(query) ||
+        participant.employeeId.toLowerCase().includes(query) ||
         participant.department.toLowerCase().includes(query) ||
         participant.position.toLowerCase().includes(query)
       );
@@ -448,7 +452,7 @@ export default function Participants() {
           mode: 'edit',
           form: {
             name: participant.name,
-            email: participant.email,
+            employeeId: participant.employeeId,
             team: participant.team,
             department: participant.department,
             position: participant.position,
@@ -629,11 +633,11 @@ export default function Participants() {
 
     let hasValidationError = false;
     const teamLimitErrors = getTeamLimitErrors(drafts);
-    const draftEmailDuplicateKeys = getDraftEmailDuplicateKeys(drafts);
+    const draftEmployeeIdDuplicateKeys = getDraftEmployeeIdDuplicateKeys(drafts);
     for (const draft of drafts) {
       const errors = validateParticipantDraft(draft, displayTeams, displayParticipants);
-      if (draftEmailDuplicateKeys.has(draft.key)) {
-        errors.email = '입력된 행 중 동일한 이메일이 있습니다.';
+      if (draftEmployeeIdDuplicateKeys.has(draft.key)) {
+        errors.employeeId = '입력된 행 중 동일한 사번이 있습니다.';
       }
       const teamLimitError = teamLimitErrors.get(draft.key);
       if (teamLimitError) errors.team = teamLimitError;
@@ -658,7 +662,7 @@ export default function Participants() {
     for (const draft of drafts) {
       const payload = {
         name: draft.form.name.trim(),
-        email: draft.form.email.trim(),
+        employeeId: draft.form.employeeId.trim().toUpperCase(),
         team: draft.form.team,
         department: draft.form.department.trim(),
         position: draft.form.position.trim(),
@@ -1573,7 +1577,7 @@ function ParticipantsTab({
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="이름, 이메일, 부서, 직급으로 검색"
+            placeholder="이름, 사번, 부서, 직급으로 검색"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="w-full rounded-lg border border-gray-200 py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#80766b]/30"
@@ -1636,7 +1640,7 @@ function ParticipantsTab({
               <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
                 <th className="pb-3 pr-3">팀장</th>
                 <th className="pb-3 pr-3">이름</th>
-                <th className="pb-3 pr-3">이메일</th>
+                <th className="pb-3 pr-3">사번</th>
                 <th className="pb-3 pr-3">팀</th>
                 <th className="pb-3 pr-3">부서</th>
                 <th className="pb-3 pr-3">직급</th>
@@ -1687,7 +1691,7 @@ function ParticipantsTab({
                     <td className="py-3 pr-3">
                       <span className="font-medium text-gray-800">{participant.name}</span>
                     </td>
-                    <td className="truncate py-3 pr-3 text-gray-500">{participant.email}</td>
+                    <td className="truncate py-3 pr-3 text-gray-500">{participant.employeeId}</td>
                     <td className="py-3 pr-3 text-gray-500">
                       <span className="flex items-center gap-1">
                         {teamName(participant.team)}
@@ -1795,14 +1799,14 @@ function ParticipantEditableRow({
       </td>
       <td className="py-3 pr-3">
         <input
-          type="email"
-          value={draft.form.email}
-          onChange={(event) => onDraftChange(draft.key, 'email', event.target.value)}
-          className={tableInputClass(!!draft.errors.email)}
-          placeholder="example@company.com"
+          type="text"
+          value={draft.form.employeeId}
+          onChange={(event) => onDraftChange(draft.key, 'employeeId', event.target.value)}
+          className={tableInputClass(!!draft.errors.employeeId)}
+          placeholder="A123456"
         />
-        {draft.errors.email && (
-          <p className="mt-1 text-xs text-red-500">{draft.errors.email}</p>
+        {draft.errors.employeeId && (
+          <p className="mt-1 text-xs text-red-500">{draft.errors.employeeId}</p>
         )}
       </td>
       <td className="py-3 pr-3">

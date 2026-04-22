@@ -99,18 +99,27 @@ Deno.serve(async (req: Request) => {
 
   // ── 참가자 생성 ────────────────────────────────────────────────
   if (action === "create") {
-    const { name, email, password, department, position, team_id, status, is_leader } = body;
+    const { name, employee_id, password, department, position, team_id, status, is_leader } = body;
 
-    if (!email || !name) return json({ error: "email, name은 필수입니다." }, 400);
+    if (!employee_id || !name) return json({ error: "employee_id, name은 필수입니다." }, 400);
 
-    // 이메일 중복 사전 체크
-    const { data: existingByEmail } = await admin
+    // 사번 형식 검증: 알파벳 1자 + 숫자 6자리 (대소문자 무관)
+    const rawId = employee_id as string;
+    if (!/^[A-Za-z][0-9]{6}$/.test(rawId)) {
+      return json({ error: "사번 형식이 올바르지 않습니다. (알파벳 1자 + 숫자 6자리, 예: A123456)" }, 400);
+    }
+    // 대문자로 정규화
+    const normalizedId = rawId.toUpperCase();
+    const email = `${normalizedId}@hackathon.com`;
+
+    // 사번 중복 사전 체크 (대소문자 무관)
+    const { data: existingByEmployeeId } = await admin
       .from("participants")
       .select("id")
-      .eq("email", email as string)
+      .eq("employee_id", normalizedId)
       .maybeSingle();
-    if (existingByEmail) {
-      return json({ error: "이미 등록된 이메일입니다." }, 409);
+    if (existingByEmployeeId) {
+      return json({ error: "이미 등록된 사번입니다." }, 409);
     }
 
     let resolvedTeamId = (team_id as string | undefined) || null;
@@ -159,7 +168,7 @@ Deno.serve(async (req: Request) => {
 
     // 1. auth user 생성
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
-      email: email as string,
+      email,
       password: resolvedPassword,
       email_confirm: true,
       app_metadata: { role: "participant" },       // 서버 전용 — 클라이언트 수정 불가
@@ -173,6 +182,7 @@ Deno.serve(async (req: Request) => {
       .insert({
         user_id: authData.user.id,
         name,
+        employee_id: normalizedId,
         email,
         team_id: resolvedTeamId,
         department: department ?? "",
@@ -194,9 +204,32 @@ Deno.serve(async (req: Request) => {
 
   // ── 참가자 수정 (admin 전용) ───────────────────────────────────
   if (action === "update") {
-    const { participant_id, user_id, name, team_id, department, position, status, is_leader } = body;
+    const { participant_id, user_id, name, employee_id, team_id, department, position, status, is_leader } = body;
 
     if (!participant_id) return json({ error: "participant_id가 필요합니다." }, 400);
+
+    // 사번 변경 시 형식 검증 및 정규화
+    let updatedEmployeeId: string | undefined;
+    let updatedEmail: string | undefined;
+    if (employee_id !== undefined) {
+      const rawId = employee_id as string;
+      if (!/^[A-Za-z][0-9]{6}$/.test(rawId)) {
+        return json({ error: "사번 형식이 올바르지 않습니다. (알파벳 1자 + 숫자 6자리, 예: A123456)" }, 400);
+      }
+      updatedEmployeeId = rawId.toUpperCase();
+      updatedEmail = `${updatedEmployeeId}@hackathon.com`;
+
+      // 사번 중복 체크 (본인 제외)
+      const { data: existingByEmployeeId } = await admin
+        .from("participants")
+        .select("id")
+        .eq("employee_id", updatedEmployeeId)
+        .neq("id", participant_id as string)
+        .maybeSingle();
+      if (existingByEmployeeId) {
+        return json({ error: "이미 등록된 사번입니다." }, 409);
+      }
+    }
 
     if (team_id) {
       const { data: currentParticipant, error: currentError } = await admin
@@ -220,6 +253,8 @@ Deno.serve(async (req: Request) => {
 
     const patch: Record<string, unknown> = {};
     if (name !== undefined) patch.name = name;
+    if (updatedEmployeeId !== undefined) patch.employee_id = updatedEmployeeId;
+    if (updatedEmail !== undefined) patch.email = updatedEmail;
     if (team_id !== undefined) patch.team_id = team_id;
     if (department !== undefined) patch.department = department;
     if (position !== undefined) patch.position = position;
@@ -235,14 +270,22 @@ Deno.serve(async (req: Request) => {
 
     if (dbError) return json({ error: dbError.message }, 400);
 
-    // auth user 이름 동기화 (이름 변경 시) — DB 업데이트 성공 후 진행, 실패해도 non-fatal
-    if (user_id && name !== undefined) {
-      const { error: authError } = await admin.auth.admin.updateUserById(
-        user_id as string,
-        { user_metadata: { name } }
-      );
-      if (authError) {
-        console.warn("auth metadata sync failed (non-fatal):", authError.message);
+    // auth user 동기화 (이름/사번 변경 시) — DB 업데이트 성공 후 진행, 실패해도 non-fatal
+    if (user_id) {
+      const authPatch: Record<string, unknown> = {};
+      if (name !== undefined) authPatch.user_metadata = { name };
+      if (updatedEmail !== undefined) {
+        authPatch.email = updatedEmail;
+        authPatch.email_confirm = true;
+      }
+      if (Object.keys(authPatch).length > 0) {
+        const { error: authError } = await admin.auth.admin.updateUserById(
+          user_id as string,
+          authPatch
+        );
+        if (authError) {
+          console.warn("auth sync failed (non-fatal):", authError.message);
+        }
       }
     }
 
