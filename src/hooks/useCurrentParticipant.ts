@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/useAuth';
 import {
   apiFetchParticipantByUserId,
-  apiFetchParticipantByEmail,
+  apiFetchParticipantByEmployeeId,
   apiLinkParticipant,
 } from '../api/participants';
 import { apiFetchTeamById } from '../api/teams';
@@ -18,13 +18,13 @@ export interface CurrentParticipant {
 export function useCurrentParticipant(): CurrentParticipant {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const email = user?.email ?? null;
+  const employeeId = user?.employeeId ?? null;
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [team, setTeam] = useState<TeamRow | null>(null);
   const [loading, setLoading] = useState(Boolean(userId));
 
   useEffect(() => {
-    if (!userId || !email) return;
+    if (!userId || !employeeId) return;
 
     let cancelled = false;
     async function load() {
@@ -34,8 +34,8 @@ export function useCurrentParticipant(): CurrentParticipant {
       let p = await apiFetchParticipantByUserId(userId!);
 
       if (!cancelled && !p) {
-        // 2. 없으면 email로 조회 (레거시 참가자)
-        p = await apiFetchParticipantByEmail(email!);
+        // 2. 없으면 사번으로 조회 (레거시 참가자)
+        p = await apiFetchParticipantByEmployeeId(employeeId!);
         // 3. 찾았고 user_id가 미설정이면 자동 연결
         if (!cancelled && p && !p.userId) {
           await apiLinkParticipant(p.id, userId!);
@@ -55,7 +55,7 @@ export function useCurrentParticipant(): CurrentParticipant {
     }
     load();
     return () => { cancelled = true; };
-  }, [userId, email]);
+  }, [userId, employeeId]);
 
   return {
     participant: userId ? participant : null,
