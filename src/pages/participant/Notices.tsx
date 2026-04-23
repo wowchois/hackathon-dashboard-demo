@@ -76,7 +76,7 @@ export default function ParticipantNotices() {
               {/* 아코디언 내용 */}
               {isOpen && (
                 <div className="px-4 pb-4 border-t border-gray-100">
-                  <p className="text-sm text-gray-600 leading-relaxed pt-3">
+                  <p className="text-sm text-gray-600 leading-relaxed pt-3 whitespace-pre-wrap">
                     {notice.content}
                   </p>
                 </div>
