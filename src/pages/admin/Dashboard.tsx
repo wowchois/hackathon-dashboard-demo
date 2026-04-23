@@ -202,12 +202,13 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              {/* PC: 세로 리스트 (진행 중 + 앞으로 일정만) */}
+              {/* PC: 세로 리스트 (진행 중 + 앞으로 일정만, 최대 4개) */}
               {upcomingMilestones.length > 0 ? (
                 <ol className="hidden lg:block">
-                  {upcomingMilestones.map((m, i) => {
+                  {upcomingMilestones.slice(0, 4).map((m, i) => {
                     const isCurrent = i === 0;
-                    const isLast = i === upcomingMilestones.length - 1;
+                    const visibleCount = Math.min(upcomingMilestones.length, 4);
+                    const isLast = i === visibleCount - 1;
                     return (
                       <li key={m.id} className="flex gap-3">
                         <div className="flex flex-col items-center">
@@ -231,6 +232,17 @@ export default function Dashboard() {
                       </li>
                     );
                   })}
+                  {upcomingMilestones.length > 4 && (
+                    <li className="flex gap-3 mt-1">
+                      <div className="w-3 shrink-0" />
+                      <p className="text-xs text-gray-400 flex-1">
+                        외 {upcomingMilestones.length - 4}개 일정 &middot;{' '}
+                        <Link to="/admin/milestones" className="text-[#80766b] hover:text-[#6e645a] underline underline-offset-2">
+                          전체 보기
+                        </Link>
+                      </p>
+                    </li>
+                  )}
                 </ol>
               ) : (
                 <p className="hidden lg:block text-sm text-gray-400 text-center py-2">앞으로 남은 일정이 없습니다.</p>
