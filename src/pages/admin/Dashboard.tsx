@@ -53,17 +53,40 @@ export default function Dashboard() {
       {settings.scoresPublished && top3.length > 0 && (
         <div className="mb-6 rounded-2xl overflow-hidden border border-amber-200 bg-gradient-to-b from-amber-50 to-white">
           {/* 헤더 */}
-          <div className="px-6 pt-6 pb-4 text-center">
-            <p className="text-2xl font-extrabold text-gray-800 tracking-tight">
+          <div className="px-5 pt-5 pb-3 sm:px-6 sm:pt-6 sm:pb-4 text-center">
+            <p className="text-xl sm:text-2xl font-extrabold text-gray-800 tracking-tight">
               🏆 최종 순위 발표
             </p>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
               🎊 모든 심사가 완료되었습니다 · 심사위원 {top3[0]?.judgeCount ?? 0}명 기준
             </p>
           </div>
 
-          {/* 시상대 */}
-          <div className="px-4 sm:px-10 pb-0 flex items-end justify-center gap-2 sm:gap-4">
+          {/* 모바일: 리스트형 */}
+          <div className="sm:hidden px-4 pb-4 space-y-2">
+            {top3.map((item, i) => {
+              const medals = ['🥇', '🥈', '🥉'];
+              const scoreColors = ['text-amber-600', 'text-gray-500', 'text-orange-500'];
+              const cardCls = [
+                'bg-amber-50 border-amber-200',
+                'bg-white border-gray-200',
+                'bg-orange-50 border-orange-200',
+              ];
+              return (
+                <div key={item.teamId} className={`flex items-center gap-3 rounded-xl p-3 border ${cardCls[i]}`}>
+                  <span className="text-2xl shrink-0">{medals[i]}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-800 truncate">{item.team!.name}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">팀원 {item.team!.members.length}명</p>
+                  </div>
+                  <p className={`text-base font-extrabold shrink-0 ${scoreColors[i]}`}>{item.total}점</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 태블릿+: 시상대형 */}
+          <div className="hidden sm:flex px-10 pb-0 items-end justify-center gap-4">
 
             {/* 🥈 2등 */}
             {top3[1] ? (
