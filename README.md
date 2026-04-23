@@ -91,6 +91,21 @@ npm run build   # tsc + Vite 프로덕션 빌드
 - `admin` 또는 `judge`로 시작하는 계정은 사번 형식 검증 없이 로그인 시도
 - 내부적으로 `{사번}@hackathon.com` 이메일로 Supabase Auth 인증
 
+## 세션 및 토큰 관리
+
+### 저장 위치
+
+Supabase SDK가 브라우저 **`localStorage`** 에 JWT 액세스 토큰과 리프레시 토큰을 자동으로 저장합니다. 프로젝트 코드에서 직접 토큰을 읽거나 쓰지 않습니다.
+
+### 세션 흐름
+
+| 단계 | 처리 방식 |
+|------|-----------|
+| 페이지 진입 | `supabase.auth.getSession()` → localStorage에서 세션 복원 |
+| 상태 감지 | `onAuthStateChange()` 구독 → 로그인/로그아웃 시 user state 자동 갱신 |
+| 토큰 갱신 | Supabase SDK 내장 자동 갱신, 별도 코드 없음 |
+| 로그아웃 | `supabase.auth.signOut()` → localStorage 토큰 제거 → user state null |
+
 ## 주요 기능
 
 ### 관리자 — 참가자 관리
