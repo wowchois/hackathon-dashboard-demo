@@ -8,7 +8,22 @@ import { useParticipants } from '../../hooks/useParticipants';
 import { useScores } from '../../hooks/useScores';
 import { useSettings } from '../../hooks/useSettings';
 import { useNotices } from '../../hooks/useNotices';
-import { Users, Flag, FileCheck, Trophy } from 'lucide-react';
+import { useMilestones } from '../../hooks/useMilestones';
+import { Users, Flag, FileCheck, Trophy, ChevronRight } from 'lucide-react';
+
+function getDday(dateStr: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr);
+  target.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function formatDday(days: number): string {
+  if (days === 0) return 'D-Day';
+  if (days > 0) return `D-${days}`;
+  return `D+${Math.abs(days)}`;
+}
 
 export default function Dashboard() {
   const teams = useTeams();
@@ -16,6 +31,14 @@ export default function Dashboard() {
   const scores = useScores();
   const settings = useSettings();
   const { data: notices } = useNotices();
+  const { data: allMilestones } = useMilestones();
+
+  const milestones = allMilestones;
+  const doneMilestones = milestones.filter((m) => m.isDone);
+  const currentIdx = milestones.findIndex((m) => !m.isDone);
+  const nextMilestone = currentIdx !== -1 ? milestones[currentIdx] : null;
+  const ddayValue = nextMilestone ? getDday(nextMilestone.date) : null;
+  const progress = milestones.length > 0 ? Math.round((doneMilestones.length / milestones.length) * 100) : 0;
 
   const submittedCount = teams.filter((t) => t.submitStatus === 'submitted').length;
   const scoredCount = scores.filter((s) => s.total > 0).length;
@@ -134,6 +157,69 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* ── 다음 일정 ── */}
+      <Card title="다음 일정" className="mb-6">
+        {nextMilestone && ddayValue !== null ? (
+          <>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-gray-700 truncate">{nextMilestone.title}</p>
+                  {!nextMilestone.isPublic && (
+                    <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded bg-gray-100 text-gray-400">비공개</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-0.5">{nextMilestone.date}</p>
+              </div>
+              <span className="text-3xl font-black text-indigo-600 shrink-0 tabular-nums">
+                {formatDday(ddayValue)}
+              </span>
+            </div>
+            <div className="flex items-center">
+              {milestones.map((m, i) => (
+                <div
+                  key={m.id}
+                  className={`flex items-center ${i < milestones.length - 1 ? 'flex-1' : ''}`}
+                >
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full shrink-0 transition-colors ${
+                      m.isDone
+                        ? 'bg-emerald-500'
+                        : i === currentIdx
+                        ? 'bg-indigo-500 ring-2 ring-indigo-200 ring-offset-1'
+                        : 'bg-gray-200'
+                    }`}
+                  />
+                  {i < milestones.length - 1 && (
+                    <div className={`flex-1 h-px ${m.isDone ? 'bg-emerald-300' : 'bg-gray-200'}`} />
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
+              <span>{doneMilestones.length}/{milestones.length} 완료 · {progress}%</span>
+              <Link
+                to="/admin/milestones"
+                className="flex items-center gap-0.5 font-medium text-[#80766b] hover:text-[#6e645a] transition-colors"
+              >
+                전체 보기 <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-2xl mb-2">🎉</p>
+            <p className="text-sm font-semibold text-gray-700">모든 일정이 완료됐습니다!</p>
+            <Link
+              to="/admin/milestones"
+              className="mt-2 inline-flex items-center gap-0.5 text-xs font-medium text-[#80766b] hover:text-[#6e645a] transition-colors"
+            >
+              일정 확인 <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        )}
+      </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
         {/* ── 팀별 제출 현황 ── */}
