@@ -55,19 +55,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // 초기 세션 로드
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ? toAuthUser(data.session.user) : null);
-      setLoading(false);
-    });
+    let mounted = true;
+
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        if (!mounted) return;
+        setSession(data.session);
+        setUser(data.session?.user ? toAuthUser(data.session.user) : null);
+      })
+      .catch((error) => {
+        console.error('Failed to restore auth session', error);
+        if (!mounted) return;
+        setSession(null);
+        setUser(null);
+        void supabase.auth.signOut({ scope: 'local' });
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
 
     // 세션 변경 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      if (!mounted) return;
       setSession(s);
       setUser(s?.user ? toAuthUser(s.user) : null);
+      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (employeeId: string, password: string): Promise<{ error: string | null }> => {
