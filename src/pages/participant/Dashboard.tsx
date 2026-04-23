@@ -7,7 +7,7 @@ import { useNotices } from '../../hooks/useNotices';
 import { useMilestones } from '../../hooks/useMilestones';
 import { useScores } from '../../hooks/useScores';
 import { useSettings } from '../../hooks/useSettings';
-import { Crown, Trophy, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Crown, Trophy, ChevronRight, CheckCircle2, Clock } from 'lucide-react';
 
 function getDday(dateStr: string): number {
   const today = new Date();
@@ -40,6 +40,7 @@ export default function ParticipantDashboard() {
   const currentIdx = milestones.findIndex((m) => !m.isDone);
   const nextMilestone = currentIdx !== -1 ? milestones[currentIdx] : null;
   const ddayValue = nextMilestone ? getDday(nextMilestone.date) : null;
+  const progress = milestones.length > 0 ? Math.round((doneMilestones.length / milestones.length) * 100) : 0;
 
   // 최근 공지사항
   const recentNotices = [...notices].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
@@ -185,10 +186,11 @@ export default function ParticipantDashboard() {
                   </div>
                 ))}
               </div>
-              <div className="flex justify-end mt-2">
+              <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
+                <span>{doneMilestones.length}/{milestones.length} 완료 · {progress}%</span>
                 <Link
                   to="/participant/schedule"
-                  className="flex items-center gap-0.5 text-xs font-medium text-[#80766b] hover:text-[#6e645a] transition-colors"
+                  className="flex items-center gap-0.5 font-medium text-[#80766b] hover:text-[#6e645a] transition-colors"
                 >
                   전체 보기 <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
@@ -209,7 +211,42 @@ export default function ParticipantDashboard() {
         </Card>
       </div>
 
-      {/* ── ③ 최근 공지사항 ── */}
+      {/* ── ③ 제출 현황 ── */}
+      {team && !evaluationDone && (
+        <Card title="제출 현황" className="mb-5">
+          <div
+            className={`flex items-center gap-4 p-4 rounded-xl border ${
+              team.submit_status === 'submitted'
+                ? 'bg-green-50 border-green-100'
+                : 'bg-gray-50 border-gray-200'
+            }`}
+          >
+            {team.submit_status === 'submitted' ? (
+              <CheckCircle2 className="w-8 h-8 text-green-500 shrink-0" />
+            ) : (
+              <Clock className="w-8 h-8 text-gray-400 shrink-0" />
+            )}
+            <div className="flex-1 min-w-0">
+              <p className={`font-semibold ${team.submit_status === 'submitted' ? 'text-green-800' : 'text-gray-600'}`}>
+                {team.submit_status === 'submitted' ? '제출 완료' : '아직 제출하지 않았습니다'}
+              </p>
+              <p className={`text-xs mt-0.5 ${team.submit_status === 'submitted' ? 'text-green-600' : 'text-gray-400'}`}>
+                {team.submit_status === 'submitted'
+                  ? '심사위원회에서 검토 중입니다.'
+                  : '제출하기 메뉴에서 결과물을 제출해주세요.'}
+              </p>
+            </div>
+            <Link
+              to="/participant/submit"
+              className="flex items-center gap-0.5 text-xs font-medium text-[#80766b] hover:text-[#6e645a] transition-colors shrink-0"
+            >
+              {team.submit_status === 'submitted' ? '확인' : '제출하기'} <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </Card>
+      )}
+
+      {/* ── ④ 최근 공지사항 ── */}
       <Card
         title="최근 공지사항"
         headerRight={
