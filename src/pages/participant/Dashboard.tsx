@@ -40,7 +40,6 @@ export default function ParticipantDashboard() {
   const currentIdx = milestones.findIndex((m) => !m.isDone);
   const nextMilestone = currentIdx !== -1 ? milestones[currentIdx] : null;
   const ddayValue = nextMilestone ? getDday(nextMilestone.date) : null;
-  const progress = milestones.length > 0 ? Math.round((doneMilestones.length / milestones.length) * 100) : 0;
 
   // 최근 공지사항
   const recentNotices = [...notices].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
@@ -136,14 +135,12 @@ export default function ParticipantDashboard() {
                       ) : (
                         <span className="w-3.5 h-3.5 shrink-0" />
                       )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-700 truncate">{m.name}</p>
-                        {(m.department || m.position) && (
-                          <p className="text-xs text-gray-400 truncate">
-                            {[m.department, m.position].filter(Boolean).join(' · ')}
-                          </p>
-                        )}
-                      </div>
+                      <span className="text-sm font-medium text-gray-700 truncate flex-1">{m.name}</span>
+                      {(m.department || m.position) && (
+                        <span className="text-xs text-gray-400 shrink-0">
+                          {[m.department, m.position].filter(Boolean).join(' · ')}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -167,17 +164,31 @@ export default function ParticipantDashboard() {
                   {formatDday(ddayValue)}
                 </span>
               </div>
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-1.5">
-                <div
-                  className="h-full bg-indigo-500 rounded-full transition-all duration-700"
-                  style={{ width: `${progress}%` }}
-                />
+              <div className="flex items-center mt-1">
+                {milestones.map((m, i) => (
+                  <div
+                    key={m.id}
+                    className={`flex items-center ${i < milestones.length - 1 ? 'flex-1' : ''}`}
+                  >
+                    <div
+                      className={`w-2.5 h-2.5 rounded-full shrink-0 transition-colors ${
+                        m.isDone
+                          ? 'bg-emerald-500'
+                          : i === currentIdx
+                          ? 'bg-indigo-500 ring-2 ring-indigo-200 ring-offset-1'
+                          : 'bg-gray-200'
+                      }`}
+                    />
+                    {i < milestones.length - 1 && (
+                      <div className={`flex-1 h-px ${m.isDone ? 'bg-emerald-300' : 'bg-gray-200'}`} />
+                    )}
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center justify-between text-xs text-gray-400">
-                <span>{doneMilestones.length}/{milestones.length} 완료 · {progress}%</span>
+              <div className="flex justify-end mt-2">
                 <Link
                   to="/participant/schedule"
-                  className="flex items-center gap-0.5 font-medium text-[#80766b] hover:text-[#6e645a] transition-colors"
+                  className="flex items-center gap-0.5 text-xs font-medium text-[#80766b] hover:text-[#6e645a] transition-colors"
                 >
                   전체 보기 <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
