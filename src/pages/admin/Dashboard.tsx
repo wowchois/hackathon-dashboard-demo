@@ -35,6 +35,7 @@ export default function Dashboard() {
 
   const milestones = allMilestones;
   const doneMilestones = milestones.filter((m) => m.isDone);
+  const upcomingMilestones = milestones.filter((m) => !m.isDone);
   const currentIdx = milestones.findIndex((m) => !m.isDone);
   const nextMilestone = currentIdx !== -1 ? milestones[currentIdx] : null;
   const ddayValue = nextMilestone ? getDday(nextMilestone.date) : null;
@@ -178,7 +179,8 @@ export default function Dashboard() {
                   {formatDday(ddayValue)}
                 </span>
               </div>
-              <div className="flex items-center">
+              {/* 모바일: 가로 점 인디케이터 */}
+            <div className="flex items-center lg:hidden">
                 {milestones.map((m, i) => (
                   <div
                     key={m.id}
@@ -199,7 +201,42 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-              <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
+
+              {/* PC: 세로 리스트 (진행 중 + 앞으로 일정만) */}
+              {upcomingMilestones.length > 0 ? (
+                <ol className="hidden lg:block">
+                  {upcomingMilestones.map((m, i) => {
+                    const isCurrent = i === 0;
+                    const isLast = i === upcomingMilestones.length - 1;
+                    return (
+                      <li key={m.id} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <div
+                            className={`w-3 h-3 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center ${
+                              isCurrent
+                                ? 'border-indigo-500 bg-white ring-2 ring-indigo-100'
+                                : 'border-gray-300 bg-white'
+                            }`}
+                          >
+                            {isCurrent && <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />}
+                          </div>
+                          {!isLast && <div className="w-0.5 flex-1 bg-gray-200 my-1 min-h-[10px]" />}
+                        </div>
+                        <div className={`flex-1 min-w-0 ${isLast ? 'pb-0' : 'pb-2.5'}`}>
+                          <p className="text-[11px] text-gray-400">{m.date}</p>
+                          <p className={`text-sm font-medium mt-0.5 truncate ${isCurrent ? 'text-indigo-700' : 'text-gray-600'}`}>
+                            {m.title}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : (
+                <p className="hidden lg:block text-sm text-gray-400 text-center py-2">앞으로 남은 일정이 없습니다.</p>
+              )}
+
+              <div className="flex items-center justify-between text-xs text-gray-400 mt-3">
                 <span>{doneMilestones.length}/{milestones.length} 완료 · {progress}%</span>
                 <Link
                   to="/admin/milestones"
