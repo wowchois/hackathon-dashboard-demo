@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/layout/AdminLayout';
 import StatCard from '../../components/ui/StatCard';
 import Card from '../../components/ui/Card';
@@ -146,12 +147,14 @@ export default function Dashboard() {
           <ul className="divide-y divide-gray-100 lg:hidden">
             {mobileRecentNotices.map((notice) => (
               <li key={notice.id} className="py-3 first:pt-0 last:pb-0">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-medium text-gray-800 leading-snug">{notice.title}</p>
-                  <span className="text-xs text-gray-400 shrink-0">{notice.date}</span>
-                </div>
-                <p className="text-xs text-gray-400 mt-0.5">{notice.author}</p>
-                <p className="text-sm text-gray-500 mt-1.5 line-clamp-2">{notice.content}</p>
+                <Link to={`/admin/notices#${notice.id}`} className="block hover:opacity-70 transition-opacity">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium text-gray-800 leading-snug">{notice.title}</p>
+                    <span className="text-xs text-gray-400 shrink-0">{notice.date}</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">{notice.author}</p>
+                  <p className="text-sm text-gray-500 mt-1.5 line-clamp-2">{notice.content}</p>
+                </Link>
               </li>
             ))}
           </ul>
@@ -159,12 +162,14 @@ export default function Dashboard() {
           <ul className="hidden divide-y divide-gray-100 lg:block">
             {recentNotices.map((notice) => (
               <li key={notice.id} className="py-3 first:pt-0 last:pb-0">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-medium text-gray-800 leading-snug">{notice.title}</p>
-                  <span className="text-xs text-gray-400 shrink-0">{notice.date}</span>
-                </div>
-                <p className="text-xs text-gray-400 mt-0.5">{notice.author}</p>
-                <p className="text-sm text-gray-500 mt-1.5 line-clamp-2">{notice.content}</p>
+                <Link to={`/admin/notices#${notice.id}`} className="block hover:opacity-70 transition-opacity">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium text-gray-800 leading-snug">{notice.title}</p>
+                    <span className="text-xs text-gray-400 shrink-0">{notice.date}</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">{notice.author}</p>
+                  <p className="text-sm text-gray-500 mt-1.5 line-clamp-2">{notice.content}</p>
+                </Link>
               </li>
             ))}
           </ul>

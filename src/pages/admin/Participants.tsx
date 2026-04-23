@@ -1676,14 +1676,14 @@ function ParticipantsTab({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-[1100px] table-fixed text-sm">
+          <table className="min-w-[1000px] table-fixed text-sm">
             <colgroup>
               <col style={{ width: 80 }} />
               <col style={{ width: 150 }} />
-              <col style={{ width: 220 }} />
-              <col style={{ width: 150 }} />
+              <col style={{ width: 110 }} />
+              <col style={{ width: 260 }} />
               <col style={{ width: 130 }} />
-              <col style={{ width: 130 }} />
+              <col style={{ width: 80 }} />
               <col style={{ width: 90 }} />
               <col style={{ width: 100 }} />
             </colgroup>
