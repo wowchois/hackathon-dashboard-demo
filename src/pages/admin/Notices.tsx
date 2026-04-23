@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import AdminLayout from '../../components/layout/AdminLayout';
 import Card from '../../components/ui/Card';
 import { useNotices } from '../../hooks/useNotices';
@@ -10,6 +11,8 @@ type FormMode = 'add' | 'edit';
 
 export default function Notices() {
   const { data: notices, refetch } = useNotices();
+  const location = useLocation();
+  const lastScrolledHash = useRef('');
 
   const [showForm, setShowForm] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>('add');
@@ -18,6 +21,17 @@ export default function Notices() {
   const [contentInput, setContentInput] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const id = location.hash.slice(1);
+    if (!id || notices.length === 0 || lastScrolledHash.current === id) return;
+    if (!notices.some((n) => n.id === id)) return;
+    lastScrolledHash.current = id;
+    setExpandedIds((prev) => { const next = new Set(prev); next.add(id); return next; });
+    setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }, [location.hash, notices]);
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
@@ -148,7 +162,8 @@ export default function Notices() {
           {notices.map((notice) => {
             const expanded = expandedIds.has(notice.id);
             return (
-              <Card key={notice.id}>
+              <div key={notice.id} id={notice.id} className="scroll-mt-4">
+              <Card>
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -189,6 +204,7 @@ export default function Notices() {
                   </div>
                 </div>
               </Card>
+              </div>
             );
           })}
         </div>
