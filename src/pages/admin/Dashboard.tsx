@@ -301,7 +301,17 @@ export default function Dashboard() {
       </div>
 
       {/* ── 팀별 제출 현황 ── */}
-      <Card title="팀별 제출 현황">
+      <Card
+        title="팀별 제출 현황"
+        headerRight={
+          <Link
+            to="/admin/submissions"
+            className="flex items-center gap-0.5 text-xs font-medium text-[#80766b] hover:text-[#6e645a] transition-colors"
+          >
+            제출 관리 <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        }
+      >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {teams.map((team) => {
             const submitted = team.submitStatus === 'submitted';
