@@ -33,6 +33,7 @@ interface DBParticipant {
   position: string;
   status: 'approved' | 'pending' | 'rejected';
   is_leader: boolean;
+  created_at: string | null;
 }
 
 function fromDB(row: DBParticipant): Participant {
@@ -46,6 +47,7 @@ function fromDB(row: DBParticipant): Participant {
     status: row.status ?? 'pending',
     userId: row.user_id ?? undefined,
     isLeader: row.is_leader ?? false,
+    createdAt: row.created_at ?? undefined,
   };
 }
 
@@ -53,7 +55,7 @@ export async function apiFetchParticipants(): Promise<Participant[]> {
   const { data, error } = await supabase
     .from('participants')
     .select('*')
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: false });
   if (error) throw error;
   return (data as DBParticipant[]).map(fromDB);
 }

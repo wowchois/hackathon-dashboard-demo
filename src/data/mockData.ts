@@ -10,6 +10,7 @@ export interface Participant {
   position: string;
   userId?: string;   // auth.users.id (신규 등록 참가자만 존재)
   isLeader?: boolean;
+  createdAt?: string; // ISO 8601, 등록일시
 }
 
 export interface Team {

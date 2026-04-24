@@ -347,24 +347,12 @@ export default function Participants() {
     });
 
     return filtered.sort((a, b) => {
-      // 1. 팀 없음은 마지막
-      if (!a.team && b.team) return 1;
-      if (a.team && !b.team) return -1;
-
-      // 2. 팀 이름 오름차순
-      const teamNameA = displayTeams.find((t) => t.id === a.team)?.name ?? '';
-      const teamNameB = displayTeams.find((t) => t.id === b.team)?.name ?? '';
-      const teamCmp = teamNameA.localeCompare(teamNameB, 'ko');
-      if (teamCmp !== 0) return teamCmp;
-
-      // 3. 팀장 우선
-      if (a.isLeader && !b.isLeader) return -1;
-      if (!a.isLeader && b.isLeader) return 1;
-
-      // 4. 이름 오름차순
-      return a.name.localeCompare(b.name, 'ko');
+      // 등록일시 내림차순 (최근 등록 순)
+      const ca = a.createdAt ?? '';
+      const cb = b.createdAt ?? '';
+      return cb.localeCompare(ca);
     });
-  }, [displayParticipants, displayTeams, debouncedSearch]);
+  }, [displayParticipants, debouncedSearch]);
 
   const teamAddCandidates = useMemo(
     () =>
