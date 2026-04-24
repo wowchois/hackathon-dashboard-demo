@@ -2,7 +2,7 @@ name: Supabase Keep-Alive
 
 on:
   schedule:
-    - cron: '0 1 */5 * *'  # 5일마다 새벽 1시 (UTC) 실행
+    - cron: '0 0,6,12,18 * * *'  # 매일 6시간마다 (UTC 0/6/12/18시 = KST 9/15/21/3시)
   workflow_dispatch:        # 수동 실행 가능
 
 jobs:
