@@ -328,3 +328,27 @@ CREATE UNIQUE INDEX IF NOT EXISTS participants_employee_id_idx
 -- UPDATE auth.users
 --   SET email = 'J000001@hackathon.com'
 --   WHERE email = 'judge1@xxx.com';
+
+-- ============================================================
+-- MIGRATION: 공지사항 공개/비공개 기능 추가
+-- ============================================================
+
+-- 1. notices 테이블에 is_public 컬럼 추가 (기존 공지는 모두 공개로 처리)
+ALTER TABLE notices
+  ADD COLUMN IF NOT EXISTS is_public boolean NOT NULL DEFAULT true;
+
+-- 2. notices RLS 정책 변경
+--    기존: 인증된 모든 사용자가 전체 공지 조회 가능
+--    변경: 관리자는 전체 조회, 그 외(참가자·심사위원)는 공개 공지만 조회
+DROP POLICY IF EXISTS "read" ON notices;
+
+-- 관리자: 공개·비공개 모두 조회
+CREATE POLICY "admin_read" ON notices
+  FOR SELECT USING ((auth.jwt()->'app_metadata'->>'role') = 'admin');
+
+-- 참가자·심사위원: 공개 공지만 조회
+CREATE POLICY "public_read" ON notices
+  FOR SELECT USING (
+    auth.role() = 'authenticated'
+    AND is_public = true
+  );
