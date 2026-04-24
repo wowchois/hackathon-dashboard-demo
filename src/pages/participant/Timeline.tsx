@@ -5,7 +5,7 @@ import { useMilestones } from '../../hooks/useMilestones';
 import { useCurrentParticipant } from '../../hooks/useCurrentParticipant';
 import { useMyAttendances } from '../../hooks/useMyAttendances';
 import { apiVoteAttendance } from '../../api/attendances';
-import { CheckCircle2, Circle, Loader2 } from 'lucide-react';
+import { CheckCircle2, Circle, Loader2, Info } from 'lucide-react';
 
 // ── 투표 가능 기간 유틸 (KST 기준) ────────────────────────────
 
@@ -15,11 +15,9 @@ function getVotingOpenTime(dateStr: string): Date {
 }
 
 function getVotingCloseTime(dateStr: string): Date {
-  // 정오 KST(03:00 UTC)로 파싱하면 UTC 날짜와 KST 날짜가 동일해 getUTCDay()로 요일 판단 가능
-  const dayOfWeek = new Date(`${dateStr}T12:00:00+09:00`).getUTCDay(); // 0=일, 6=토
-  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-  const closeHour = isWeekend ? 10 : 18;
-  return new Date(`${dateStr}T${String(closeHour).padStart(2, '0')}:00:00+09:00`);
+  // 전날 23:00 KST = 당일 00:00 KST - 1시간
+  const kstMidnight = new Date(`${dateStr}T00:00:00+09:00`);
+  return new Date(kstMidnight.getTime() - 60 * 60 * 1000);
 }
 
 function isVotingOpen(dateStr: string): boolean {
@@ -28,13 +26,11 @@ function isVotingOpen(dateStr: string): boolean {
 }
 
 function getVoteDeadlineLabel(dateStr: string): string {
-  const d = new Date(`${dateStr}T12:00:00+09:00`);
-  const month = d.getUTCMonth() + 1;
-  const day = d.getUTCDate();
+  // 전날 날짜 계산
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const prevDay = new Date(y, m - 1, d - 1);
   const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-  const dow = d.getUTCDay();
-  const isWeekend = dow === 0 || dow === 6;
-  return `${month}/${day}(${weekdays[dow]}) ${isWeekend ? '오전 10시' : '오후 6시'}`;
+  return `${prevDay.getMonth() + 1}/${prevDay.getDate()}(${weekdays[prevDay.getDay()]}) 오후 11시`;
 }
 
 // ── D-day 유틸 ────────────────────────────────────────────────
@@ -140,6 +136,17 @@ export default function Timeline() {
         </div>
         <p className="text-xs text-gray-400 mt-1.5 text-right">{progress}%</p>
       </Card>
+
+      {/* ── 참석 투표 안내 배너 ── */}
+      <div className="flex gap-3 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 mb-4">
+        <Info className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-indigo-700">참석 투표 안내</p>
+          <p className="text-xs text-indigo-500 mt-0.5 leading-relaxed">
+            각 일정은 <span className="font-medium">7일 전부터 전날 오후 11시</span>까지 참석 여부를 투표할 수 있습니다. 마감 전까지 재투표가 가능합니다.
+          </p>
+        </div>
+      </div>
 
       {/* ── 타임라인 리스트 ── */}
       <Card title="전체 일정">

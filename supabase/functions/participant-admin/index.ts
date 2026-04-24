@@ -356,22 +356,17 @@ Deno.serve(async (req: Request) => {
       return json({ error: "일정을 찾을 수 없습니다." }, 404);
     }
 
-    // 투표 가능 기간 확인 (KST 기준: 7일 전 자정 ~ 당일 평일 18:00 / 주말 10:00)
+    // 투표 가능 기간 확인 (KST 기준: 7일 전 자정 ~ 전날 23:00)
     const milestoneDateStr = milestone.date as string; // "YYYY-MM-DD"
     const now = new Date();
 
     const kstMidnight = new Date(`${milestoneDateStr}T00:00:00+09:00`);
     const openTime = new Date(kstMidnight.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    // 요일 판단: 정오 KST(03:00 UTC)로 UTC 날짜와 KST 날짜를 동일하게 맞춤
-    const dayOfWeek = new Date(`${milestoneDateStr}T12:00:00+09:00`).getUTCDay(); // 0=일, 6=토
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-    const closeHour = isWeekend ? 10 : 18;
-    const closeTime = new Date(`${milestoneDateStr}T${String(closeHour).padStart(2, "0")}:00:00+09:00`);
+    const closeTime = new Date(kstMidnight.getTime() - 60 * 60 * 1000); // 전날 23:00 KST
 
     if (now < openTime || now > closeTime) {
       return json({
-        error: "투표 가능 기간이 아닙니다. 일정 7일 전부터 당일 (평일 오후 6시, 주말 오전 10시)까지 투표할 수 있습니다.",
+        error: "투표 가능 기간이 아닙니다. 일정 7일 전부터 전날 오후 11시까지 투표할 수 있습니다.",
       }, 403);
     }
 
