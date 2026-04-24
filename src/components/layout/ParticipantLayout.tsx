@@ -4,7 +4,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Calendar, Megaphone, Upload, Trophy, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../../contexts/useAuth';
 import { useCurrentParticipant } from '../../hooks/useCurrentParticipant';
-import { useSupabaseKeepalive } from '../../hooks/useSupabaseKeepalive';
 import {
   MilestonesNotificationProvider,
   useMilestonesNotification,
@@ -50,7 +49,6 @@ export default function ParticipantLayout({ children }: ParticipantLayoutProps) 
 
 // 실제 레이아웃 — context 소비
 function ParticipantLayoutContent({ children }: { children: ReactNode }) {
-  useSupabaseKeepalive();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isActive } = useActiveNav();
   const { user, signOut } = useAuth();

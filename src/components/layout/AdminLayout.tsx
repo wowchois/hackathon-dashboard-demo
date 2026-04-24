@@ -16,7 +16,6 @@ import {
 
 const SETTINGS_PATH = '/admin/settings';
 import { useAuth } from '../../contexts/useAuth';
-import { useSupabaseKeepalive } from '../../hooks/useSupabaseKeepalive';
 
 const NAV_ITEMS = [
   { path: '/admin',               label: '대시보드',    icon: LayoutDashboard, roles: ['admin'] },
@@ -42,7 +41,6 @@ interface AdminLayoutProps {
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  useSupabaseKeepalive();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isActive, currentLabel } = useActiveNav();
   const { user, signOut } = useAuth();
