@@ -49,8 +49,8 @@ export default function Dashboard() {
 
   const submittedCount = teams.filter((t) => t.submitStatus === 'submitted').length;
   const scoredCount = scores.filter((s) => s.total > 0).length;
-  const recentNotices = notices.slice(0, 5);
-  const mobileRecentNotices = notices.slice(0, 2);
+  const recentNotices = notices.slice(0, 3);
+  const mobileRecentNotices = notices.slice(0, 3);
 
   const top3 = [...scores]
     .filter((s) => s.judgeCount > 0)
