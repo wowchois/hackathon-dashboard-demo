@@ -283,6 +283,7 @@ export default function Participants() {
 
   const [tab, setTab] = useState<Tab>('participants');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [newRows, setNewRows] = useState<ParticipantDraftRow[]>([]);
   const [editRows, setEditRows] = useState<Record<string, ParticipantDraftRow>>({});
   const [optimisticParticipants, setOptimisticParticipants] = useState<Participant[]>([]);
@@ -311,6 +312,11 @@ export default function Participants() {
     onConfirm: () => void;
   } | null>(null);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const displayTeams = useMemo(() => mergeTeams(teams, optimisticTeams), [teams, optimisticTeams]);
 
   const displayParticipants = useMemo(
@@ -322,7 +328,7 @@ export default function Participants() {
   );
 
   const filteredParticipants = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = debouncedSearch.trim().toLowerCase();
     const filtered = displayParticipants.filter((participant) => {
       if (!query) return true;
       return (
@@ -351,7 +357,7 @@ export default function Participants() {
       // 4. 이름 오름차순
       return a.name.localeCompare(b.name, 'ko');
     });
-  }, [displayParticipants, displayTeams, search]);
+  }, [displayParticipants, displayTeams, debouncedSearch]);
 
   const teamAddCandidates = useMemo(
     () =>
@@ -689,6 +695,8 @@ export default function Participants() {
     setSavingParticipants(true);
     const failedKeys = new Set<string>();
     const firstError: string[] = [];
+    const createdParticipants: Participant[] = [];
+    const updatedParticipants: Participant[] = [];
 
     for (const draft of drafts) {
       const payload = {
@@ -703,25 +711,32 @@ export default function Participants() {
 
       try {
         if (draft.mode === 'new') {
-            const createdParticipant = await createParticipantWithAuth(payload);
-            setOptimisticParticipants((prev) => [...prev, createdParticipant]);
+          const createdParticipant = await createParticipantWithAuth(payload);
+          createdParticipants.push(createdParticipant);
         } else if (draft.id) {
           const original = displayParticipants.find((p) => p.id === draft.id);
           await updateParticipant(draft.id, payload, original?.userId);
           if (original) {
-            const updated: Participant = { ...original, ...payload };
-            setOptimisticParticipants((prev) => {
-              const exists = prev.some((p) => p.id === draft.id);
-              return exists
-                ? prev.map((p) => (p.id === draft.id ? updated : p))
-                : [...prev, updated];
-            });
+            updatedParticipants.push({ ...original, ...payload });
           }
         }
       } catch (e: unknown) {
         failedKeys.add(draft.key);
         if (firstError.length === 0 && e instanceof Error) firstError.push(e.message);
       }
+    }
+
+    if (createdParticipants.length > 0 || updatedParticipants.length > 0) {
+      setOptimisticParticipants((prev) => {
+        let next = [...prev, ...createdParticipants];
+        for (const updated of updatedParticipants) {
+          const exists = next.some((p) => p.id === updated.id);
+          next = exists
+            ? next.map((p) => (p.id === updated.id ? updated : p))
+            : [...next, updated];
+        }
+        return next;
+      });
     }
 
     setSavingParticipants(false);
