@@ -2,11 +2,15 @@ import { supabase } from '../lib/supabase';
 
 const EDGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notice-files`;
 
-async function call(action: string, payload: Record<string, unknown>) {
+async function getToken(): Promise<string> {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error('Unauthorized');
+  return token;
+}
 
+async function call(action: string, payload: Record<string, unknown>) {
+  const token = await getToken();
   const res = await fetch(EDGE_URL, {
     method: 'POST',
     headers: {
@@ -21,28 +25,21 @@ async function call(action: string, payload: Record<string, unknown>) {
   return json;
 }
 
-export async function apiGetUploadUrl(
-  noticeId: string,
-  fileName: string,
-  fileSize: number,
-  mimeType: string,
-): Promise<{ uploadUrl: string; fileId: string }> {
-  const data = await call('upload-url', {
-    notice_id: noticeId,
-    file_name: fileName,
-    file_size: fileSize,
-    mime_type: mimeType,
-  });
-  return { uploadUrl: data.upload_url, fileId: data.file_id };
-}
+export async function apiUploadNoticeFile(noticeId: string, file: File): Promise<string> {
+  const token = await getToken();
+  const form = new FormData();
+  form.append('notice_id', noticeId);
+  form.append('file', file);
 
-export async function apiUploadToS3(uploadUrl: string, file: File): Promise<void> {
-  const res = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': file.type },
-    body: file,
+  const res = await fetch(EDGE_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
   });
-  if (!res.ok) throw new Error('S3 업로드에 실패했습니다.');
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error ?? '업로드에 실패했습니다.');
+  return json.file_id as string;
 }
 
 export async function apiGetDownloadUrl(fileId: string): Promise<string> {
@@ -52,8 +49,4 @@ export async function apiGetDownloadUrl(fileId: string): Promise<string> {
 
 export async function apiDeleteNoticeFile(fileId: string): Promise<void> {
   await call('delete-file', { file_id: fileId });
-}
-
-export async function apiDeleteNoticeFileRecord(fileId: string): Promise<void> {
-  await call('delete-record', { file_id: fileId });
 }
