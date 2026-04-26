@@ -182,7 +182,7 @@ Deno.serve(async (req: Request) => {
       Key: file.s3_key,
       ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(file.file_name)}`,
     });
-    const downloadUrl = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
+    const downloadUrl = await getSignedUrl(s3, getCommand, { expiresIn: 300 });
 
     return json({ download_url: downloadUrl });
   }
