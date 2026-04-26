@@ -168,10 +168,15 @@ export default function Notices() {
         });
       }
 
-      // 2. 새 파일 업로드 (실패 시 기존 파일은 안전)
+      // 2. 새 파일 업로드 — S3 실패 시 사전 삽입된 DB 레코드 즉시 정리
       for (const file of pendingFiles) {
-        const { uploadUrl } = await apiGetUploadUrl(noticeId, file.name, file.size, file.type);
-        await apiUploadToS3(uploadUrl, file);
+        const { uploadUrl, fileId } = await apiGetUploadUrl(noticeId, file.name, file.size, file.type);
+        try {
+          await apiUploadToS3(uploadUrl, file);
+        } catch (e) {
+          await apiDeleteNoticeFile(fileId).catch(() => {});
+          throw e;
+        }
       }
 
       // 3. 삭제 예약 파일 제거 (업로드 성공 후)
