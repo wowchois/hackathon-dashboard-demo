@@ -28,6 +28,7 @@ export default function Notices() {
   const { data: notices, refetch } = useNotices();
   const location = useLocation();
   const lastScrolledHash = useRef('');
+  const formRef = useRef<HTMLDivElement>(null);
 
   const [showForm, setShowForm] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>('add');
@@ -43,6 +44,9 @@ export default function Notices() {
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingDeletes, setPendingDeletes] = useState<string[]>([]);
   const [formFileError, setFormFileError] = useState<string | null>(null);
+
+  // 삭제 확인 모달
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
   // 조회 화면 다운로드 상태
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -73,6 +77,12 @@ export default function Notices() {
     setFormFileError(null);
   };
 
+  const scrollToForm = () => {
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
+
   const openAdd = () => {
     setFormMode('add');
     setTitleInput('');
@@ -82,6 +92,7 @@ export default function Notices() {
     setSaveError(null);
     resetFileState();
     setShowForm(true);
+    scrollToForm();
   };
 
   const openEdit = (notice: Notice) => {
@@ -93,6 +104,7 @@ export default function Notices() {
     setSaveError(null);
     resetFileState();
     setShowForm(true);
+    scrollToForm();
   };
 
   const closeForm = () => {
@@ -176,12 +188,15 @@ export default function Notices() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
     try {
-      await apiDeleteNotice(id);
+      await apiDeleteNotice(deleteTarget.id);
       refetch();
     } catch {
       console.error('공지 삭제 실패');
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -219,6 +234,7 @@ export default function Notices() {
       </div>
 
       {/* ── 작성/수정 폼 ── */}
+      <div ref={formRef} className="scroll-mt-4">
       {showForm && (
         <Card className="mb-5">
           <div className="flex items-center justify-between mb-4">
@@ -346,6 +362,7 @@ export default function Notices() {
           </div>
         </Card>
       )}
+      </div>
 
       {/* ── 공지 목록 ── */}
       {notices.length > 0 ? (
@@ -426,7 +443,7 @@ export default function Notices() {
                       <Pencil className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDelete(notice.id)}
+                      onClick={() => setDeleteTarget({ id: notice.id, title: notice.title })}
                       className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="삭제"
                     >
@@ -448,6 +465,49 @@ export default function Notices() {
           >
             첫 공지를 작성해보세요
           </button>
+        </div>
+      )}
+      {/* ── 삭제 확인 모달 ── */}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-gray-800 font-semibold text-sm">
+                <Trash2 className="w-4 h-4 text-red-500" />
+                공지사항 삭제
+              </div>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mb-2">다음 공지사항을 삭제하시겠습니까?</p>
+            <div className="bg-gray-50 rounded-lg px-3 py-2 mb-4 text-sm text-gray-700 font-medium break-words">
+              {deleteTarget.title}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="flex-1 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </AdminLayout>
