@@ -4,11 +4,24 @@ import AdminLayout from '../../components/layout/AdminLayout';
 import Card from '../../components/ui/Card';
 import { useNotices } from '../../hooks/useNotices';
 import { apiAddNotice, apiUpdateNotice, apiDeleteNotice } from '../../api/notices';
+import { apiGetUploadUrl, apiUploadToS3, apiGetDownloadUrl, apiDeleteNoticeFile } from '../../api/noticeFiles';
 import type { Notice } from '../../data/mockData';
-import { Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, Globe, Lock } from 'lucide-react';
+import {
+  Plus, Pencil, Trash2, X, ChevronDown, ChevronUp,
+  Globe, Lock, Paperclip, Download, FileText, Loader2,
+} from 'lucide-react';
 import NoticeContent from '../../components/ui/NoticeContent';
 
 type FormMode = 'add' | 'edit';
+
+const ACCEPTED_TYPES = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.zip';
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+}
 
 export default function Notices() {
   const { data: notices, refetch } = useNotices();
@@ -23,6 +36,10 @@ export default function Notices() {
   const [isPublicInput, setIsPublicInput] = useState(true);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<{ id: string; msg: string } | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     const id = location.hash.slice(1);
@@ -94,6 +111,46 @@ export default function Notices() {
       refetch();
     } catch {
       console.error('공지 삭제 실패');
+    }
+  };
+
+  const handleFileUpload = async (noticeId: string, file: File | undefined) => {
+    if (!file) return;
+    if (file.size > MAX_FILE_BYTES) {
+      setUploadError({ id: noticeId, msg: '파일 크기는 10MB를 초과할 수 없습니다.' });
+      return;
+    }
+    setUploadError(null);
+    setUploadingId(noticeId);
+    try {
+      const { uploadUrl } = await apiGetUploadUrl(noticeId, file.name, file.size, file.type);
+      await apiUploadToS3(uploadUrl, file);
+      refetch();
+    } catch (e) {
+      setUploadError({ id: noticeId, msg: e instanceof Error ? e.message : '업로드에 실패했습니다.' });
+    } finally {
+      setUploadingId(null);
+    }
+  };
+
+  const handleFileDelete = async (fileId: string) => {
+    try {
+      await apiDeleteNoticeFile(fileId);
+      refetch();
+    } catch {
+      console.error('파일 삭제 실패');
+    }
+  };
+
+  const handleDownload = async (fileId: string) => {
+    setDownloadingId(fileId);
+    try {
+      const url = await apiGetDownloadUrl(fileId);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      console.error('다운로드 실패');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -187,11 +244,15 @@ export default function Notices() {
           {notices.map((notice) => {
             const expanded = expandedIds.has(notice.id);
             const isPublic = notice.isPublic !== false;
+            const isUploading = uploadingId === notice.id;
+            const fileError = uploadError?.id === notice.id ? uploadError.msg : null;
+
             return (
               <div key={notice.id} id={notice.id} className="scroll-mt-4">
               <Card>
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
+                    {/* 제목 + 공개 배지 */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-gray-800">{notice.title}</p>
                       <span className={`inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-full shrink-0 ${
@@ -205,10 +266,14 @@ export default function Notices() {
                     <p className="text-xs text-gray-400 mt-0.5">
                       {notice.date} · {notice.author}
                     </p>
+
+                    {/* 내용 */}
                     <NoticeContent
                       content={notice.content}
                       className={`text-sm text-gray-500 mt-2 whitespace-pre-wrap break-words ${expanded ? '' : 'line-clamp-2'}`}
                     />
+
+                    {/* 더보기/접기 */}
                     <button
                       onClick={() => toggleExpand(notice.id)}
                       className="flex items-center gap-1 mt-1.5 text-xs text-[#80766b] hover:text-[#6e645a] transition-colors"
@@ -219,7 +284,65 @@ export default function Notices() {
                         <><ChevronDown className="w-3.5 h-3.5" />더보기</>
                       )}
                     </button>
+
+                    {/* ── 파일 섹션 (펼쳐진 경우) ── */}
+                    {expanded && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        {notice.files && notice.files.length > 0 && (
+                          <div className="space-y-1.5 mb-2">
+                            {notice.files.map((f) => (
+                              <div key={f.id} className="flex items-center gap-2">
+                                <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                <span className="text-xs text-gray-600 flex-1 min-w-0 truncate">{f.fileName}</span>
+                                <span className="text-xs text-gray-400 shrink-0">{formatSize(f.fileSize)}</span>
+                                <button
+                                  onClick={() => handleDownload(f.id)}
+                                  disabled={downloadingId === f.id}
+                                  className="p-1 text-gray-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
+                                  title="다운로드"
+                                >
+                                  {downloadingId === f.id
+                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    : <Download className="w-3.5 h-3.5" />}
+                                </button>
+                                <button
+                                  onClick={() => handleFileDelete(f.id)}
+                                  className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                  title="파일 삭제"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <label className={`inline-flex items-center gap-1 text-xs transition-colors ${
+                          isUploading
+                            ? 'text-gray-400'
+                            : 'text-[#80766b] hover:text-[#6e645a] cursor-pointer'
+                        }`}>
+                          <input
+                            type="file"
+                            accept={ACCEPTED_TYPES}
+                            className="hidden"
+                            disabled={isUploading}
+                            onChange={(e) => {
+                              handleFileUpload(notice.id, e.target.files?.[0]);
+                              e.target.value = '';
+                            }}
+                          />
+                          {isUploading
+                            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />업로드 중...</>
+                            : <><Paperclip className="w-3.5 h-3.5" />파일 추가</>}
+                        </label>
+                        {fileError && (
+                          <p className="text-xs text-red-500 mt-1">{fileError}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
+
+                  {/* 수정/삭제 버튼 */}
                   <div className="flex gap-1 shrink-0">
                     <button
                       onClick={() => openEdit(notice)}
