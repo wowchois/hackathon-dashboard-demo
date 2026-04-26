@@ -4,7 +4,7 @@ import AdminLayout from '../../components/layout/AdminLayout';
 import Card from '../../components/ui/Card';
 import { useNotices } from '../../hooks/useNotices';
 import { apiAddNotice, apiUpdateNotice, apiDeleteNotice } from '../../api/notices';
-import { apiGetUploadUrl, apiUploadToS3, apiGetDownloadUrl, apiDeleteNoticeFile } from '../../api/noticeFiles';
+import { apiGetUploadUrl, apiUploadToS3, apiGetDownloadUrl, apiDeleteNoticeFile, apiDeleteNoticeFileRecord } from '../../api/noticeFiles';
 import type { Notice, NoticeFile } from '../../data/mockData';
 import {
   Plus, Pencil, Trash2, X, ChevronDown, ChevronUp,
@@ -174,7 +174,7 @@ export default function Notices() {
         try {
           await apiUploadToS3(uploadUrl, file);
         } catch (e) {
-          await apiDeleteNoticeFile(fileId).catch(() => {});
+          await apiDeleteNoticeFileRecord(fileId).catch(() => {});
           throw e;
         }
       }

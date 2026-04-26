@@ -186,7 +186,24 @@ Deno.serve(async (req: Request) => {
     return json({ download_url: downloadUrl });
   }
 
-  // ── 파일 삭제 (admin only) ────────────────────────────────────
+  // ── DB 레코드만 삭제 (S3 업로드 실패 시 orphan 정리용, admin only) ──
+  if (action === "delete-record") {
+    if (!isAdmin) return json({ error: "Forbidden" }, 403);
+
+    const { file_id } = body;
+    if (!file_id) return json({ error: "file_id가 필요합니다." }, 400);
+
+    const { error: dbError } = await admin
+      .from("notice_files")
+      .delete()
+      .eq("id", file_id as string);
+
+    if (dbError) return json({ error: dbError.message }, 400);
+
+    return json({ success: true });
+  }
+
+  // ── 파일 삭제 (S3 + DB, admin only) ──────────────────────────
   if (action === "delete-file") {
     if (!isAdmin) return json({ error: "Forbidden" }, 403);
 

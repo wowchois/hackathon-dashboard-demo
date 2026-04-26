@@ -53,3 +53,7 @@ export async function apiGetDownloadUrl(fileId: string): Promise<string> {
 export async function apiDeleteNoticeFile(fileId: string): Promise<void> {
   await call('delete-file', { file_id: fileId });
 }
+
+export async function apiDeleteNoticeFileRecord(fileId: string): Promise<void> {
+  await call('delete-record', { file_id: fileId });
+}
