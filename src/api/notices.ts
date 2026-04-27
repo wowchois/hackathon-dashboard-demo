@@ -1,5 +1,12 @@
 import { supabase } from '../lib/supabase';
-import type { Notice } from '../data/mockData';
+import type { Notice, NoticeFile } from '../data/mockData';
+
+interface DBNoticeFile {
+  id: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+}
 
 interface DBNotice {
   id: string;
@@ -8,6 +15,7 @@ interface DBNotice {
   author: string;
   is_public: boolean;
   created_at: string;
+  notice_files: DBNoticeFile[];
 }
 
 function toLocalDateStr(isoStr: string): string {
@@ -16,6 +24,12 @@ function toLocalDateStr(isoStr: string): string {
 }
 
 function fromDB(row: DBNotice): Notice {
+  const files: NoticeFile[] = (row.notice_files ?? []).map((f) => ({
+    id: f.id,
+    fileName: f.file_name,
+    fileSize: f.file_size,
+    mimeType: f.mime_type,
+  }));
   return {
     id: row.id,
     title: row.title,
@@ -23,13 +37,14 @@ function fromDB(row: DBNotice): Notice {
     author: row.author ?? '관리자',
     date: toLocalDateStr(row.created_at),
     isPublic: row.is_public ?? true,
+    files,
   };
 }
 
 export async function apiFetchNotices(opts?: { publicOnly?: boolean }): Promise<Notice[]> {
   let q = supabase
     .from('notices')
-    .select('*')
+    .select('*, notice_files(id, file_name, file_size, mime_type)')
     .order('created_at', { ascending: false });
   if (opts?.publicOnly) q = q.eq('is_public', true);
   const { data, error } = await q;
@@ -48,7 +63,7 @@ export async function apiAddNotice(
       author: '관리자',
       is_public: notice.isPublic ?? true,
     })
-    .select()
+    .select('*, notice_files(id, file_name, file_size, mime_type)')
     .single();
   if (error) throw error;
   return fromDB(data as DBNotice);

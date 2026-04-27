@@ -352,3 +352,39 @@ CREATE POLICY "public_read" ON notices
     auth.role() = 'authenticated'
     AND is_public = true
   );
+
+-- ============================================================
+-- MIGRATION: 공지사항 파일 첨부 기능 추가 (AWS S3 연동)
+-- ============================================================
+
+-- 1. notice_files 테이블 (S3 파일 메타데이터 저장)
+CREATE TABLE notice_files (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  notice_id  uuid NOT NULL REFERENCES notices(id) ON DELETE CASCADE,
+  file_name  text NOT NULL,
+  s3_key     text NOT NULL UNIQUE,
+  file_size  bigint NOT NULL DEFAULT 0,
+  mime_type  text NOT NULL DEFAULT '',
+  created_at timestamptz DEFAULT now()
+);
+
+-- 2. RLS
+ALTER TABLE notice_files ENABLE ROW LEVEL SECURITY;
+
+-- 관리자: 전체 파일 조회
+CREATE POLICY "admin_read" ON notice_files
+  FOR SELECT USING ((auth.jwt()->'app_metadata'->>'role') = 'admin');
+
+-- 참가자·심사위원: 공개 공지의 파일만 조회
+CREATE POLICY "public_read" ON notice_files
+  FOR SELECT USING (
+    auth.role() = 'authenticated'
+    AND EXISTS (
+      SELECT 1 FROM notices n
+      WHERE n.id = notice_files.notice_id AND n.is_public = true
+    )
+  );
+
+-- 관리자만 파일 추가/삭제 (Edge Function이 service_role로 처리)
+CREATE POLICY "admin_write" ON notice_files
+  FOR ALL USING ((auth.jwt()->'app_metadata'->>'role') = 'admin');

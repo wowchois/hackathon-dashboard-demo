@@ -22,6 +22,13 @@ export interface Team {
   score: number | null;
 }
 
+export interface NoticeFile {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+}
+
 export interface Notice {
   id: string;
   title: string;
@@ -29,6 +36,7 @@ export interface Notice {
   date: string;
   author: string;
   isPublic?: boolean;
+  files?: NoticeFile[];
 }
 
 export interface Milestone {
