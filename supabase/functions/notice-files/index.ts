@@ -52,11 +52,12 @@ Deno.serve(async (req: Request) => {
     AWS_SECRET_ACCESS_KEY,
     AWS_REGION,
     AWS_S3_BUCKET,
+    APP_ENV,
   } = Deno.env.toObject();
 
   if (
     !SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY ||
-    !AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY || !AWS_REGION || !AWS_S3_BUCKET
+    !AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY || !AWS_REGION || !AWS_S3_BUCKET || !APP_ENV
   ) {
     return json({ error: "Server misconfigured" }, 500);
   }
@@ -124,7 +125,7 @@ Deno.serve(async (req: Request) => {
     // UUID 기반 S3 key 생성 (경로 예측 불가)
     const ext = (file_name as string).split(".").pop()?.toLowerCase() ?? "bin";
     const fileUuid = crypto.randomUUID();
-    const s3Key = `notices/${notice_id}/${fileUuid}.${ext}`;
+    const s3Key = `notices/${APP_ENV}/${notice_id}/${fileUuid}.${ext}`;
 
     // Presigned PUT URL 발급 (5분)
     const putCommand = new PutObjectCommand({
