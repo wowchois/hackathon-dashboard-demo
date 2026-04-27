@@ -4,7 +4,7 @@ import AdminLayout from '../../components/layout/AdminLayout';
 import Card from '../../components/ui/Card';
 import { useNotices } from '../../hooks/useNotices';
 import { apiAddNotice, apiUpdateNotice, apiDeleteNotice } from '../../api/notices';
-import { apiUploadNoticeFile, apiGetDownloadUrl, apiDeleteNoticeFile } from '../../api/noticeFiles';
+import { apiGetUploadUrl, apiUploadToS3, apiGetDownloadUrl, apiDeleteNoticeFile, apiDeleteNoticeFileRecord } from '../../api/noticeFiles';
 import type { Notice, NoticeFile } from '../../data/mockData';
 import {
   Plus, Pencil, Trash2, X, ChevronDown, ChevronUp,
@@ -15,7 +15,7 @@ import NoticeContent from '../../components/ui/NoticeContent';
 type FormMode = 'add' | 'edit';
 
 const ACCEPTED_TYPES = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.zip';
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_FILES = 3;
 
 function formatSize(bytes: number): string {
@@ -130,7 +130,7 @@ export default function Notices() {
     e.target.value = '';
     if (!file) return;
     if (file.size > MAX_FILE_BYTES) {
-      setFormFileError('파일 크기는 5MB를 초과할 수 없습니다.');
+      setFormFileError('파일 크기는 20MB를 초과할 수 없습니다.');
       return;
     }
     setFormFileError(null);
@@ -168,9 +168,15 @@ export default function Notices() {
         });
       }
 
-      // 2. 새 파일 업로드 (Edge Function → S3, CORS 불필요)
+      // 2. 새 파일 업로드 — S3 실패 시 사전 삽입된 DB 레코드 즉시 정리
       for (const file of pendingFiles) {
-        await apiUploadNoticeFile(noticeId, file);
+        const { uploadUrl, fileId } = await apiGetUploadUrl(noticeId, file.name, file.size, file.type);
+        try {
+          await apiUploadToS3(uploadUrl, file);
+        } catch (e) {
+          await apiDeleteNoticeFileRecord(fileId).catch(() => {});
+          throw e;
+        }
       }
 
       // 3. 삭제 예약 파일 제거 (업로드 성공 후)

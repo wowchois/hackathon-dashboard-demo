@@ -28,7 +28,7 @@ const ALLOWED_MIME_TYPES = new Set([
   "application/zip",
 ]);
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -85,74 +85,6 @@ Deno.serve(async (req: Request) => {
     },
   });
 
-  // ── 파일 업로드 (admin only, multipart/form-data) ─────────────
-  const contentType = req.headers.get("Content-Type") ?? "";
-  if (contentType.includes("multipart/form-data")) {
-    if (!isAdmin) return json({ error: "Forbidden" }, 403);
-
-    let formData: FormData;
-    try {
-      formData = await req.formData();
-    } catch {
-      return json({ error: "Invalid form data" }, 400);
-    }
-
-    const noticeId = formData.get("notice_id") as string | null;
-    const file = formData.get("file") as File | null;
-
-    if (!noticeId || !file) {
-      return json({ error: "notice_id와 file은 필수입니다." }, 400);
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      return json({ error: "파일 크기는 5MB를 초과할 수 없습니다." }, 400);
-    }
-    if (!ALLOWED_MIME_TYPES.has(file.type)) {
-      return json({ error: "허용되지 않는 파일 형식입니다." }, 400);
-    }
-
-    // 공지 존재 확인
-    const { data: notice, error: noticeError } = await admin
-      .from("notices")
-      .select("id")
-      .eq("id", noticeId)
-      .single();
-    if (noticeError || !notice) {
-      return json({ error: "공지사항을 찾을 수 없습니다." }, 404);
-    }
-
-    // UUID 기반 S3 key 생성
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-    const fileUuid = crypto.randomUUID();
-    const s3Key = `notices/${noticeId}/${fileUuid}.${ext}`;
-
-    // S3에 직접 업로드 (서버→S3, CORS 불필요)
-    const bytes = await file.arrayBuffer();
-    await s3.send(new PutObjectCommand({
-      Bucket: AWS_S3_BUCKET,
-      Key: s3Key,
-      Body: new Uint8Array(bytes),
-      ContentType: file.type,
-    }));
-
-    // S3 성공 후 DB 삽입 (orphan 없음)
-    const { data: fileRecord, error: dbError } = await admin
-      .from("notice_files")
-      .insert({
-        notice_id: noticeId,
-        file_name: file.name,
-        s3_key: s3Key,
-        file_size: file.size,
-        mime_type: file.type,
-      })
-      .select()
-      .single();
-
-    if (dbError) return json({ error: dbError.message }, 400);
-
-    return json({ file_id: fileRecord.id });
-  }
-
-  // ── JSON 액션 파싱 ─────────────────────────────────────────────
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -160,6 +92,69 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Invalid JSON body" }, 400);
   }
   const { action } = body;
+
+  // ── 업로드 URL 발급 (admin only) ──────────────────────────────
+  if (action === "upload-url") {
+    if (!isAdmin) return json({ error: "Forbidden" }, 403);
+
+    const { notice_id, file_name, file_size, mime_type } = body;
+    if (!notice_id || !file_name || !file_size || !mime_type) {
+      return json(
+        { error: "notice_id, file_name, file_size, mime_type은 필수입니다." },
+        400,
+      );
+    }
+    if ((file_size as number) > MAX_FILE_SIZE) {
+      return json({ error: "파일 크기는 20MB를 초과할 수 없습니다." }, 400);
+    }
+    if (!ALLOWED_MIME_TYPES.has(mime_type as string)) {
+      return json({ error: "허용되지 않는 파일 형식입니다." }, 400);
+    }
+
+    // 공지 존재 확인
+    const { data: notice, error: noticeError } = await admin
+      .from("notices")
+      .select("id")
+      .eq("id", notice_id as string)
+      .single();
+    if (noticeError || !notice) {
+      return json({ error: "공지사항을 찾을 수 없습니다." }, 404);
+    }
+
+    // UUID 기반 S3 key 생성 (경로 예측 불가)
+    const ext = (file_name as string).split(".").pop()?.toLowerCase() ?? "bin";
+    const fileUuid = crypto.randomUUID();
+    const s3Key = `notices/${notice_id}/${fileUuid}.${ext}`;
+
+    // Presigned PUT URL 발급 (5분)
+    const putCommand = new PutObjectCommand({
+      Bucket: AWS_S3_BUCKET,
+      Key: s3Key,
+      ContentType: mime_type as string,
+    });
+    const uploadUrl = await getSignedUrl(s3, putCommand, { expiresIn: 300 });
+
+    // DB에 파일 메타데이터 사전 삽입
+    const { data: fileRecord, error: dbError } = await admin
+      .from("notice_files")
+      .insert({
+        notice_id: notice_id as string,
+        file_name: file_name as string,
+        s3_key: s3Key,
+        file_size: file_size as number,
+        mime_type: mime_type as string,
+      })
+      .select()
+      .single();
+
+    if (dbError) return json({ error: dbError.message }, 400);
+
+    return json({
+      upload_url: uploadUrl,
+      file_id: fileRecord.id,
+      s3_key: s3Key,
+    });
+  }
 
   // ── 다운로드 URL 발급 (인증된 사용자, RLS로 접근 제어) ──────────
   if (action === "download-url") {
@@ -180,7 +175,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Presigned GET URL 발급 (1시간)
+    // Presigned GET URL 발급 (5분)
     const getCommand = new GetObjectCommand({
       Bucket: AWS_S3_BUCKET,
       Key: file.s3_key,
@@ -189,6 +184,23 @@ Deno.serve(async (req: Request) => {
     const downloadUrl = await getSignedUrl(s3, getCommand, { expiresIn: 300 });
 
     return json({ download_url: downloadUrl });
+  }
+
+  // ── DB 레코드만 삭제 (S3 업로드 실패 시 orphan 정리용, admin only) ──
+  if (action === "delete-record") {
+    if (!isAdmin) return json({ error: "Forbidden" }, 403);
+
+    const { file_id } = body;
+    if (!file_id) return json({ error: "file_id가 필요합니다." }, 400);
+
+    const { error: dbError } = await admin
+      .from("notice_files")
+      .delete()
+      .eq("id", file_id as string);
+
+    if (dbError) return json({ error: dbError.message }, 400);
+
+    return json({ success: true });
   }
 
   // ── 파일 삭제 (S3 + DB, admin only) ──────────────────────────
