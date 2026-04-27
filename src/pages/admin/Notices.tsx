@@ -147,14 +147,9 @@ export default function Notices() {
     const candidates = files.slice(0, remaining);
     const valid = candidates.filter((f) => f.size <= MAX_FILE_BYTES);
     const hasOversized = candidates.some((f) => f.size > MAX_FILE_BYTES);
-    const hasTooMany = files.length > remaining;
 
-    if (hasOversized && hasTooMany) {
-      setFormFileError(`최대 ${MAX_FILES}개까지 첨부 가능하며, 20MB를 초과한 파일은 제외되었습니다.`);
-    } else if (hasOversized) {
+    if (hasOversized) {
       setFormFileError('20MB를 초과한 파일은 제외되었습니다.');
-    } else if (hasTooMany) {
-      setFormFileError(`최대 ${MAX_FILES}개까지 첨부 가능합니다.`);
     } else {
       setFormFileError(null);
     }
