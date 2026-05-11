@@ -5,6 +5,7 @@ import { useNotices } from '../../hooks/useNotices';
 import { apiGetDownloadUrl } from '../../api/noticeFiles';
 import { ChevronDown, ChevronUp, FileText, Download, Loader2 } from 'lucide-react';
 import NoticeContent from '../../components/ui/NoticeContent';
+import NoticeImage from '../../components/ui/NoticeImage';
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`;
@@ -124,25 +125,32 @@ export default function ParticipantNotices() {
                   />
 
                   {/* 첨부 파일 */}
-                  {notice.files && notice.files.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5">
-                      {notice.files.map((f) => (
-                        <button
-                          key={f.id}
-                          onClick={() => handleDownload(f.id)}
-                          disabled={downloadingId === f.id}
-                          className="w-full flex items-center gap-2 text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                          <span className="text-xs text-indigo-600 flex-1 min-w-0 truncate">{f.fileName}</span>
-                          <span className="text-xs text-gray-400 shrink-0">{formatSize(f.fileSize)}</span>
-                          {downloadingId === f.id
-                            ? <Loader2 className="w-3.5 h-3.5 text-gray-400 shrink-0 animate-spin" />
-                            : <Download className="w-3.5 h-3.5 text-gray-400 shrink-0" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  {notice.files && notice.files.length > 0 && (() => {
+                    const imageFiles = notice.files.filter((f) => f.mimeType.startsWith('image/'));
+                    const otherFiles = notice.files.filter((f) => !f.mimeType.startsWith('image/'));
+                    return (
+                      <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                        {imageFiles.map((f) => (
+                          <NoticeImage key={f.id} fileId={f.id} fileName={f.fileName} />
+                        ))}
+                        {otherFiles.map((f) => (
+                          <button
+                            key={f.id}
+                            onClick={() => handleDownload(f.id)}
+                            disabled={downloadingId === f.id}
+                            className="w-full flex items-center gap-2 text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                            <span className="text-xs text-indigo-600 flex-1 min-w-0 truncate">{f.fileName}</span>
+                            <span className="text-xs text-gray-400 shrink-0">{formatSize(f.fileSize)}</span>
+                            {downloadingId === f.id
+                              ? <Loader2 className="w-3.5 h-3.5 text-gray-400 shrink-0 animate-spin" />
+                              : <Download className="w-3.5 h-3.5 text-gray-400 shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
