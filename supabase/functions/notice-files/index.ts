@@ -127,7 +127,7 @@ Deno.serve(async (req: Request) => {
     const fileUuid = crypto.randomUUID();
     const isImage = (mime_type as string).startsWith("image/");
     const folder = isImage
-      ? `notices/${APP_ENV}/img/${notice_id}`
+      ? `notices/${APP_ENV}/${notice_id}/img`
       : `notices/${APP_ENV}/${notice_id}`;
     const s3Key = `${folder}/${fileUuid}.${ext}`;
 
