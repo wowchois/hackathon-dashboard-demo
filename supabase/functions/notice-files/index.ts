@@ -165,7 +165,7 @@ Deno.serve(async (req: Request) => {
     // callerClient로 조회 → notice_files RLS가 공개 여부 자동 필터
     const { data: file, error: fileError } = await callerClient
       .from("notice_files")
-      .select("s3_key, file_name")
+      .select("s3_key, file_name, mime_type")
       .eq("id", file_id as string)
       .single();
 
@@ -176,11 +176,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Presigned GET URL 발급 (5분)
+    // 이미지는 Content-Disposition 없이 발급 → 브라우저에서 바로 열림
+    // 그 외 파일은 attachment로 발급 → 다운로드
+    const isImage = (file.mime_type as string).startsWith("image/");
     const getCommand = new GetObjectCommand({
       Bucket: AWS_S3_BUCKET,
       Key: file.s3_key,
-      ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(file.file_name)}`,
+      ...(!isImage && {
+        ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(file.file_name)}`,
+      }),
     });
     const downloadUrl = await getSignedUrl(s3, getCommand, { expiresIn: 300 });
 
