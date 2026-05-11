@@ -122,10 +122,14 @@ Deno.serve(async (req: Request) => {
       return json({ error: "공지사항을 찾을 수 없습니다." }, 404);
     }
 
-    // UUID 기반 S3 key 생성 (경로 예측 불가)
+    // UUID 기반 S3 key 생성 — 이미지는 /img/ 경로에 저장 (퍼블릭 허용 대상)
     const ext = (file_name as string).split(".").pop()?.toLowerCase() ?? "bin";
     const fileUuid = crypto.randomUUID();
-    const s3Key = `notices/${APP_ENV}/${notice_id}/${fileUuid}.${ext}`;
+    const isImage = (mime_type as string).startsWith("image/");
+    const folder = isImage
+      ? `notices/${APP_ENV}/img/${notice_id}`
+      : `notices/${APP_ENV}/${notice_id}`;
+    const s3Key = `${folder}/${fileUuid}.${ext}`;
 
     // Presigned PUT URL 발급 (5분)
     const putCommand = new PutObjectCommand({
@@ -176,13 +180,18 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Presigned GET URL 발급 (5분)
-    const getCommand = new GetObjectCommand({
-      Bucket: AWS_S3_BUCKET,
-      Key: file.s3_key,
-      ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(file.file_name)}`,
-    });
-    const downloadUrl = await getSignedUrl(s3, getCommand, { expiresIn: 300 });
+    // 이미지 경로(/img/)는 퍼블릭이므로 직접 URL 반환, 그 외는 presigned URL
+    let downloadUrl: string;
+    if (file.s3_key.includes("/img/")) {
+      downloadUrl = `https://${AWS_S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/${file.s3_key}`;
+    } else {
+      const getCommand = new GetObjectCommand({
+        Bucket: AWS_S3_BUCKET,
+        Key: file.s3_key,
+        ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(file.file_name)}`,
+      });
+      downloadUrl = await getSignedUrl(s3, getCommand, { expiresIn: 300 });
+    }
 
     return json({ download_url: downloadUrl });
   }
