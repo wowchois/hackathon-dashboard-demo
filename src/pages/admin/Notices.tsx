@@ -401,9 +401,9 @@ export default function Notices() {
             return (
               <div key={notice.id} id={notice.id} className="scroll-mt-4">
               <Card>
+                {/* 제목 행: 수정/삭제 버튼과 나란히 */}
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
-                    {/* 제목 + 공개 배지 */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-gray-800">{notice.title}</p>
                       <span className={`inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-full shrink-0 ${
@@ -417,57 +417,7 @@ export default function Notices() {
                     <p className="text-xs text-gray-400 mt-0.5">
                       {notice.date} · {notice.author}
                     </p>
-
-                    {/* 내용 */}
-                    <NoticeContent
-                      content={notice.content}
-                      className={`text-sm text-gray-500 mt-2 whitespace-pre-wrap break-words ${expanded ? '' : 'line-clamp-2'}`}
-                    />
-
-                    {/* 더보기/접기 */}
-                    <button
-                      onClick={() => toggleExpand(notice.id)}
-                      className="flex items-center gap-1 mt-1.5 text-xs text-[#80766b] hover:text-[#6e645a] transition-colors"
-                    >
-                      {expanded ? (
-                        <><ChevronUp className="w-3.5 h-3.5" />접기</>
-                      ) : (
-                        <><ChevronDown className="w-3.5 h-3.5" />더보기</>
-                      )}
-                    </button>
-
-                    {/* ── 첨부 파일 (다운로드 전용) ── */}
-                    {expanded && notice.files && notice.files.length > 0 && (() => {
-                      const imageFiles = notice.files.filter((f) => f.mimeType.startsWith('image/'));
-                      const otherFiles = notice.files.filter((f) => !f.mimeType.startsWith('image/'));
-                      return (
-                        <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
-                          {imageFiles.map((f) => (
-                            <NoticeImage key={f.id} fileId={f.id} fileName={f.fileName} />
-                          ))}
-                          {otherFiles.map((f) => (
-                            <div key={f.id} className="flex items-center gap-2">
-                              <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                              <span className="text-xs text-gray-600 flex-1 min-w-0 truncate">{f.fileName}</span>
-                              <span className="text-xs text-gray-400 shrink-0">{formatSize(f.fileSize)}</span>
-                              <button
-                                onClick={() => handleDownload(f.id)}
-                                disabled={downloadingId === f.id}
-                                className="p-1 text-gray-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
-                                title="다운로드"
-                              >
-                                {downloadingId === f.id
-                                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  : <Download className="w-3.5 h-3.5" />}
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
                   </div>
-
-                  {/* 수정/삭제 버튼 */}
                   <div className="flex gap-1 shrink-0">
                     <button
                       onClick={() => openEdit(notice)}
@@ -485,6 +435,51 @@ export default function Notices() {
                     </button>
                   </div>
                 </div>
+
+                {/* 본문 + 첨부파일: 전체 너비 */}
+                <NoticeContent
+                  content={notice.content}
+                  className={`text-sm text-gray-500 mt-2 whitespace-pre-wrap break-words ${expanded ? '' : 'line-clamp-2'}`}
+                />
+                <button
+                  onClick={() => toggleExpand(notice.id)}
+                  className="flex items-center gap-1 mt-1.5 text-xs text-[#80766b] hover:text-[#6e645a] transition-colors"
+                >
+                  {expanded ? (
+                    <><ChevronUp className="w-3.5 h-3.5" />접기</>
+                  ) : (
+                    <><ChevronDown className="w-3.5 h-3.5" />더보기</>
+                  )}
+                </button>
+
+                {expanded && notice.files && notice.files.length > 0 && (() => {
+                  const imageFiles = notice.files.filter((f) => f.mimeType.startsWith('image/'));
+                  const otherFiles = notice.files.filter((f) => !f.mimeType.startsWith('image/'));
+                  return (
+                    <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                      {imageFiles.map((f) => (
+                        <NoticeImage key={f.id} fileId={f.id} fileName={f.fileName} />
+                      ))}
+                      {otherFiles.map((f) => (
+                        <div key={f.id} className="flex items-center gap-2">
+                          <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                          <span className="text-xs text-gray-600 flex-1 min-w-0 truncate">{f.fileName}</span>
+                          <span className="text-xs text-gray-400 shrink-0">{formatSize(f.fileSize)}</span>
+                          <button
+                            onClick={() => handleDownload(f.id)}
+                            disabled={downloadingId === f.id}
+                            className="p-1 text-gray-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
+                            title="다운로드"
+                          >
+                            {downloadingId === f.id
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : <Download className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </Card>
               </div>
             );
