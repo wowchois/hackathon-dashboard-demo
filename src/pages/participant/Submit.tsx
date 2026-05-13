@@ -577,9 +577,11 @@ export default function Submit() {
                     placeholder="프로젝트 소개, 주요 기능, 기술 스택 등을 간략히 설명해주세요."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    rows={5}
+                    rows={12}
+                    maxLength={3000}
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30 placeholder-gray-300 resize-none"
                   />
+                  <p className="text-right text-xs text-gray-400 mt-1">{description.length} / 3000</p>
                 </div>
                 <div className="flex gap-2 justify-end">
                   <button
@@ -671,9 +673,11 @@ export default function Submit() {
                   placeholder="프로젝트 소개, 주요 기능, 기술 스택 등을 간략히 설명해주세요."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  rows={5}
+                  rows={12}
+                  maxLength={3000}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30 placeholder-gray-300 resize-none"
                 />
+                <p className="text-right text-xs text-gray-400 mt-1">{description.length} / 3000</p>
               </div>
               <button
                 onClick={handleSubmit}
