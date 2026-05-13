@@ -408,7 +408,7 @@ CREATE TABLE submission_files (
 ALTER TABLE submission_files ENABLE ROW LEVEL SECURITY;
 
 -- 인증된 모든 사용자 조회 (관리자 다운로드 + 참가자 본인 확인)
-CREATE POLICY "Authenticated users can view submission files"
-  ON submission_files FOR SELECT TO authenticated USING (true);
+CREATE POLICY "read" ON submission_files
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 -- 파일 추가/삭제는 Edge Function이 service_role로 처리 (별도 정책 불필요)
