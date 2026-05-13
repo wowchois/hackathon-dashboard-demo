@@ -187,10 +187,7 @@ export default function Submissions() {
                     {detail.description && (
                       <div className="pt-1">
                         {expandedDesc.has(team.id) ? (
-                          <div
-                            className="max-h-48 overflow-y-auto"
-                            style={{ scrollbarGutter: 'stable' }}
-                          >
+                          <div className="desc-scroll max-h-48 overflow-y-scroll">
                             <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-wrap break-words">
                               {detail.description}
                             </p>
