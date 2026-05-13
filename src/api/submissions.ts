@@ -81,7 +81,9 @@ export async function apiUpsertSubmission(
   payload: { githubUrl: string; slidesUrl: string; description: string }
 ): Promise<void> {
   const githubUrl = normalizeHttpsUrl(payload.githubUrl, 'GitHub URL');
-  const slidesUrl = normalizeHttpsUrl(payload.slidesUrl, 'Slides URL');
+  const slidesUrl = payload.slidesUrl.trim()
+    ? normalizeHttpsUrl(payload.slidesUrl, 'Slides URL')
+    : '';
 
   const { error } = await supabase
     .from('submissions')

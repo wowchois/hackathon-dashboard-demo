@@ -388,3 +388,27 @@ CREATE POLICY "public_read" ON notice_files
 -- 관리자만 파일 추가/삭제 (Edge Function이 service_role로 처리)
 CREATE POLICY "admin_write" ON notice_files
   FOR ALL USING ((auth.jwt()->'app_metadata'->>'role') = 'admin');
+
+-- ============================================================
+-- MIGRATION: 제출 첨부파일 기능 추가 (AWS S3 연동)
+-- ============================================================
+
+-- 1. submission_files 테이블 (팀당 발표 자료 파일 1개, S3 메타데이터 저장)
+CREATE TABLE submission_files (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id     uuid NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  file_name   text NOT NULL,
+  s3_key      text NOT NULL UNIQUE,
+  file_size   bigint NOT NULL DEFAULT 0,
+  mime_type   text NOT NULL DEFAULT '',
+  uploaded_at timestamptz DEFAULT now()
+);
+
+-- 2. RLS
+ALTER TABLE submission_files ENABLE ROW LEVEL SECURITY;
+
+-- 인증된 모든 사용자 조회 (관리자 다운로드 + 참가자 본인 확인)
+CREATE POLICY "read" ON submission_files
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- 파일 추가/삭제는 Edge Function이 service_role로 처리 (별도 정책 불필요)
