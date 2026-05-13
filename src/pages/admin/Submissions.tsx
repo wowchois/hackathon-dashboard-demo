@@ -186,9 +186,20 @@ export default function Submissions() {
                     {/* Description */}
                     {detail.description && (
                       <div className="pt-1">
-                        <p className={`text-xs text-gray-500 leading-relaxed whitespace-pre-wrap break-words ${expandedDesc.has(team.id) ? 'max-h-48 overflow-y-auto [scrollbar-gutter:stable]' : 'line-clamp-1'}`}>
-                          {detail.description}
-                        </p>
+                        {expandedDesc.has(team.id) ? (
+                          <div
+                            className="max-h-48 overflow-y-auto"
+                            style={{ scrollbarGutter: 'stable' }}
+                          >
+                            <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-wrap break-words">
+                              {detail.description}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-wrap break-words line-clamp-1">
+                            {detail.description}
+                          </p>
+                        )}
                         <button
                           onClick={() => setExpandedDesc((prev) => {
                             const next = new Set(prev);
