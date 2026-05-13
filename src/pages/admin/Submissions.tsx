@@ -5,7 +5,12 @@ import Badge from '../../components/ui/Badge';
 import { useTeams } from '../../hooks/useTeams';
 import { apiFetchAllSubmissions } from '../../api/submissions';
 import type { Submission } from '../../api/submissions';
-import { FileCheck, ExternalLink, Clock, AlertCircle } from 'lucide-react';
+import {
+  apiFetchAllSubmissionFiles,
+  apiGetSubmissionDownloadUrl,
+} from '../../api/submissionFiles';
+import type { SubmissionFile } from '../../api/submissionFiles';
+import { FileCheck, ExternalLink, Clock, AlertCircle, FileText, Download, Loader2 } from 'lucide-react';
 
 function getSafeHttpsHref(value: string): string | null {
   try {
@@ -16,22 +21,44 @@ function getSafeHttpsHref(value: string): string | null {
   }
 }
 
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+}
+
 export default function Submissions() {
   const teams = useTeams();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [submissionFiles, setSubmissionFiles] = useState<SubmissionFile[]>([]);
+  const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetchAllSubmissions().then(setSubmissions).catch(console.error);
+    apiFetchAllSubmissionFiles().then(setSubmissionFiles).catch(console.error);
   }, []);
 
   const submissionMap = Object.fromEntries(submissions.map((s) => [s.teamId, s]));
+  const submissionFileMap = Object.fromEntries(submissionFiles.map((f) => [f.teamId, f]));
 
   const submittedCount = teams.filter((t) => t.submitStatus === 'submitted').length;
   const total = teams.length;
 
+  const handleDownload = async (fileId: string) => {
+    setDownloadingFileId(fileId);
+    try {
+      const url = await apiGetSubmissionDownloadUrl(fileId);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      console.error('다운로드 실패');
+    } finally {
+      setDownloadingFileId(null);
+    }
+  };
+
   return (
     <AdminLayout>
-      {/* ── 요약 배너 ── */}
+      {/* 요약 배너 */}
       <div
         className={`flex items-center gap-4 rounded-xl border px-5 py-4 mb-6 ${
           submittedCount === total && total > 0
@@ -62,7 +89,6 @@ export default function Submissions() {
               : `${total - submittedCount}팀이 아직 제출하지 않았습니다.`}
           </p>
         </div>
-        {/* 진행률 */}
         <div className="ml-auto hidden sm:block text-right">
           <p
             className={`text-2xl font-bold ${
@@ -75,17 +101,17 @@ export default function Submissions() {
         </div>
       </div>
 
-      {/* ── 팀별 카드 ── */}
+      {/* 팀별 카드 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {teams.map((team) => {
           const submitted = team.submitStatus === 'submitted';
           const detail = submissionMap[team.id];
+          const slideFile = submissionFileMap[team.id] ?? null;
           const githubHref = detail ? getSafeHttpsHref(detail.githubUrl) : null;
-          const slidesHref = detail ? getSafeHttpsHref(detail.slidesUrl) : null;
+          const slidesHref = detail?.slidesUrl ? getSafeHttpsHref(detail.slidesUrl) : null;
 
           return (
             <Card key={team.id} className={submitted ? '' : 'opacity-60'}>
-              {/* 팀 헤더 */}
               <div className="flex items-start justify-between mb-3">
                 <h3 className="font-semibold text-gray-800">{team.name}</h3>
                 <Badge status={team.submitStatus} />
@@ -93,7 +119,6 @@ export default function Submissions() {
 
               {submitted && detail ? (
                 <div className="space-y-3">
-                  {/* 제출 시각 */}
                   <div className="flex items-center gap-1.5 text-xs text-gray-400">
                     <Clock className="w-3.5 h-3.5 shrink-0" />
                     <span>{detail.submittedAt} 제출</span>
@@ -124,8 +149,25 @@ export default function Submissions() {
                       <p className="text-sm text-red-600 break-all">{detail.githubUrl}</p>
                     )}
 
-                    {/* Slides */}
-                    {slidesHref ? (
+                    {/* 발표 자료: 파일 우선, 없으면 URL */}
+                    {slideFile ? (
+                      <button
+                        onClick={() => handleDownload(slideFile.id)}
+                        disabled={downloadingFileId === slideFile.id}
+                        className="flex items-center gap-2.5 text-sm text-gray-700 hover:text-[#80766b] transition-colors group w-full text-left disabled:opacity-50"
+                      >
+                        <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gray-100 group-hover:bg-[#80766b]/10 transition-colors shrink-0">
+                          <FileText className="w-4 h-4 text-gray-600 group-hover:text-[#80766b]" />
+                        </span>
+                        <span className="flex-1 font-medium truncate">{slideFile.fileName}</span>
+                        <span className="text-xs text-gray-400 shrink-0">{formatSize(slideFile.fileSize)}</span>
+                        {downloadingFileId === slideFile.id ? (
+                          <Loader2 className="w-3.5 h-3.5 shrink-0 text-gray-400 animate-spin" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                        )}
+                      </button>
+                    ) : slidesHref ? (
                       <a
                         href={slidesHref}
                         target="_blank"
@@ -138,9 +180,7 @@ export default function Submissions() {
                         <span className="flex-1 font-medium truncate">{detail.slidesUrl}</span>
                         <ExternalLink className="w-3.5 h-3.5 shrink-0 text-gray-400" />
                       </a>
-                    ) : (
-                      <p className="text-sm text-red-600 break-all">{detail.slidesUrl}</p>
-                    )}
+                    ) : null}
 
                     {/* Description */}
                     {detail.description && (

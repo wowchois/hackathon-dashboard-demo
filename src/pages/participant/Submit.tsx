@@ -1,49 +1,58 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ParticipantLayout from '../../components/layout/ParticipantLayout';
 import Card from '../../components/ui/Card';
 import { useCurrentParticipant } from '../../hooks/useCurrentParticipant';
 import { apiFetchSubmission, apiUpsertSubmission } from '../../api/submissions';
 import type { Submission } from '../../api/submissions';
-import { CheckCircle2, AlertCircle, ExternalLink, Lock, Pencil } from 'lucide-react';
+import {
+  apiFetchSubmissionFile,
+  apiGetSubmissionUploadUrl,
+  apiUploadSubmissionToS3,
+  apiDeleteSubmissionFile,
+  apiDeleteSubmissionFileRecord,
+  apiGetSubmissionDownloadUrl,
+} from '../../api/submissionFiles';
+import type { SubmissionFile } from '../../api/submissionFiles';
+import {
+  CheckCircle2,
+  AlertCircle,
+  ExternalLink,
+  Lock,
+  Pencil,
+  FileText,
+  Download,
+  Loader2,
+  X,
+  Paperclip,
+  Link,
+} from 'lucide-react';
 import { useSettings } from '../../hooks/useSettings';
 import { isSubmissionOpen } from '../../api/settings';
 
-function SubmissionReadOnly({ submission }: { submission: Submission }) {
-  const githubHref = getSafeHttpsHref(submission.githubUrl);
-  const slidesHref = getSafeHttpsHref(submission.slidesUrl);
-  return (
-    <Card title="제출 내역" className="mb-5">
-      <div className="space-y-4">
-        <div>
-          <p className="text-xs text-gray-400 mb-1">GitHub 저장소</p>
-          {githubHref ? (
-            <a href={githubHref} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-[#80766b] hover:underline break-all">
-              {submission.githubUrl}<ExternalLink className="w-3.5 h-3.5 shrink-0" />
-            </a>
-          ) : (
-            <p className="text-sm text-red-600 break-all">{submission.githubUrl}</p>
-          )}
-        </div>
-        <div>
-          <p className="text-xs text-gray-400 mb-1">발표 자료</p>
-          {slidesHref ? (
-            <a href={slidesHref} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-[#80766b] hover:underline break-all">
-              {submission.slidesUrl}<ExternalLink className="w-3.5 h-3.5 shrink-0" />
-            </a>
-          ) : (
-            <p className="text-sm text-red-600 break-all">{submission.slidesUrl}</p>
-          )}
-        </div>
-        <div>
-          <p className="text-xs text-gray-400 mb-1">프로젝트 설명</p>
-          <p className="text-sm text-gray-700 leading-relaxed">{submission.description}</p>
-        </div>
-      </div>
-    </Card>
-  );
+type SlidesMode = 'url' | 'file';
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 }
+
+const MAX_FILE_BYTES = 20 * 1024 * 1024;
+const ACCEPTED_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.apple.keynote',
+  'image/jpeg',
+  'image/png',
+  'text/plain',
+  'application/zip',
+];
+const ACCEPTED_ATTR = ACCEPTED_MIME_TYPES.join(',');
 
 function getSafeHttpsHref(value: string): string | null {
   try {
@@ -57,16 +66,137 @@ function getSafeHttpsHref(value: string): string | null {
 function getUrlError(value: string, label: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return `${label}을 입력해 주세요.`;
-
   try {
     const parsed = new URL(trimmed);
-    if (parsed.protocol !== 'https:') {
-      return `${label}은 https URL만 사용할 수 있습니다.`;
-    }
+    if (parsed.protocol !== 'https:') return `${label}은 https URL만 사용할 수 있습니다.`;
     return null;
   } catch {
     return `${label} 형식이 올바르지 않습니다.`;
   }
+}
+
+function SlidesFileRow({
+  file,
+  onDownload,
+  downloading,
+}: {
+  file: SubmissionFile;
+  onDownload: (id: string) => void;
+  downloading: boolean;
+}) {
+  return (
+    <button
+      onClick={() => onDownload(file.id)}
+      disabled={downloading}
+      className="flex items-center gap-2 text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 w-full"
+    >
+      <FileText className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+      <span className="text-xs text-indigo-600 flex-1 min-w-0 truncate">{file.fileName}</span>
+      <span className="text-xs text-gray-400 shrink-0">{formatSize(file.fileSize)}</span>
+      {downloading ? (
+        <Loader2 className="w-3.5 h-3.5 text-gray-400 shrink-0 animate-spin" />
+      ) : (
+        <Download className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+      )}
+    </button>
+  );
+}
+
+function SubmissionReadOnly({
+  submission,
+  slidesFile,
+  onDownload,
+  downloadingFileId,
+}: {
+  submission: Submission;
+  slidesFile: SubmissionFile | null;
+  onDownload: (id: string) => void;
+  downloadingFileId: string | null;
+}) {
+  const githubHref = getSafeHttpsHref(submission.githubUrl);
+  const slidesHref = submission.slidesUrl ? getSafeHttpsHref(submission.slidesUrl) : null;
+
+  return (
+    <Card title="제출 내역" className="mb-5">
+      <div className="space-y-4">
+        <div>
+          <p className="text-xs text-gray-400 mb-1">GitHub 저장소</p>
+          {githubHref ? (
+            <a
+              href={githubHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm text-[#80766b] hover:underline break-all"
+            >
+              {submission.githubUrl}
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            </a>
+          ) : (
+            <p className="text-sm text-red-600 break-all">{submission.githubUrl}</p>
+          )}
+        </div>
+        <div>
+          <p className="text-xs text-gray-400 mb-1">발표 자료</p>
+          {slidesFile ? (
+            <SlidesFileRow
+              file={slidesFile}
+              onDownload={onDownload}
+              downloading={downloadingFileId === slidesFile.id}
+            />
+          ) : slidesHref ? (
+            <a
+              href={slidesHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm text-[#80766b] hover:underline break-all"
+            >
+              {submission.slidesUrl}
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            </a>
+          ) : (
+            <p className="text-sm text-gray-400">없음</p>
+          )}
+        </div>
+        <div>
+          <p className="text-xs text-gray-400 mb-1">프로젝트 설명</p>
+          <p className="text-sm text-gray-700 leading-relaxed">{submission.description}</p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function SlidesModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: SlidesMode;
+  onChange: (m: SlidesMode) => void;
+}) {
+  return (
+    <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+      <button
+        type="button"
+        onClick={() => onChange('url')}
+        className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${
+          mode === 'url' ? 'bg-[#80766b] text-white' : 'bg-white text-gray-500 hover:bg-gray-50'
+        }`}
+      >
+        <Link className="w-3 h-3" />
+        URL 입력
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('file')}
+        className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${
+          mode === 'file' ? 'bg-[#80766b] text-white' : 'bg-white text-gray-500 hover:bg-gray-50'
+        }`}
+      >
+        <Paperclip className="w-3 h-3" />
+        파일 첨부
+      </button>
+    </div>
+  );
 }
 
 export default function Submit() {
@@ -77,25 +207,32 @@ export default function Submit() {
 
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [loadingSubmission, setLoadingSubmission] = useState(true);
+  const [slidesFile, setSlidesFile] = useState<SubmissionFile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
 
   const [github, setGithub] = useState('');
   const [slides, setSlides] = useState('');
+  const [slidesMode, setSlidesMode] = useState<SlidesMode>('url');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [githubError, setGithubError] = useState<string | null>(null);
   const [slidesError, setSlidesError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!team?.id) return;
     setLoadingSubmission(true);
-    apiFetchSubmission(team.id)
-      .then((data) => {
-        setSubmission(data);
-        if (data) {
-          setGithub(data.githubUrl);
-          setSlides(data.slidesUrl);
-          setDescription(data.description);
+    Promise.all([apiFetchSubmission(team.id), apiFetchSubmissionFile(team.id)])
+      .then(([sub, file]) => {
+        setSubmission(sub);
+        setSlidesFile(file);
+        if (sub) {
+          setGithub(sub.githubUrl);
+          setSlides(sub.slidesUrl);
+          setSlidesMode(file ? 'file' : 'url');
           setGithubError(null);
           setSlidesError(null);
         }
@@ -104,37 +241,108 @@ export default function Submit() {
   }, [team?.id]);
 
   const submitted = submission !== null;
-  const isFormValid = github.trim() && slides.trim() && description.trim();
+  const slidesProvided = slidesMode === 'url' ? slides.trim() !== '' : (selectedFile !== null || slidesFile !== null);
+  const isFormValid = github.trim() && description.trim() && slidesProvided;
 
   const handleCancelEdit = () => {
     if (submission) {
       setGithub(submission.githubUrl);
       setSlides(submission.slidesUrl);
-      setDescription(submission.description);
+      setSlidesMode(slidesFile ? 'file' : 'url');
+      setSelectedFile(null);
       setGithubError(null);
       setSlidesError(null);
+      setFileError(null);
     }
     setIsEditing(false);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setFileError(null);
+    if (!file) { setSelectedFile(null); return; }
+    if (file.size > MAX_FILE_BYTES) {
+      setFileError('파일 크기는 20MB를 초과할 수 없습니다.');
+      setSelectedFile(null);
+      e.target.value = '';
+      return;
+    }
+    if (!ACCEPTED_MIME_TYPES.includes(file.type)) {
+      setFileError('허용되지 않는 파일 형식입니다.');
+      setSelectedFile(null);
+      e.target.value = '';
+      return;
+    }
+    setSelectedFile(file);
+  };
+
+  const handleDownload = async (fileId: string) => {
+    setDownloadingFileId(fileId);
+    try {
+      const url = await apiGetSubmissionDownloadUrl(fileId);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      console.error('다운로드 실패');
+    } finally {
+      setDownloadingFileId(null);
+    }
   };
 
   const handleSubmit = async () => {
     if (!isFormValid || !team?.id) return;
 
     const nextGithubError = getUrlError(github, 'GitHub URL');
-    const nextSlidesError = getUrlError(slides, '발표 자료 URL');
     setGithubError(nextGithubError);
-    setSlidesError(nextSlidesError);
+    let nextSlidesError: string | null = null;
+    if (slidesMode === 'url') {
+      nextSlidesError = getUrlError(slides, '발표 자료 URL');
+      setSlidesError(nextSlidesError);
+    }
     if (nextGithubError || nextSlidesError) return;
 
     setSaving(true);
     try {
+      // upsert submission (파일 모드면 slides_url 비워서 저장)
       await apiUpsertSubmission(team.id, {
         githubUrl: github.trim(),
-        slidesUrl: slides.trim(),
+        slidesUrl: slidesMode === 'url' ? slides.trim() : '',
         description: description.trim(),
       });
-      const updated = await apiFetchSubmission(team.id);
+
+      // 파일 모드: 기존 파일 삭제 후 새 파일 업로드
+      if (slidesMode === 'file' && selectedFile) {
+        if (slidesFile) {
+          await apiDeleteSubmissionFile(slidesFile.id).catch(() => {});
+        }
+        let fileId: string | null = null;
+        try {
+          const { uploadUrl, fileId: id } = await apiGetSubmissionUploadUrl(
+            team.id,
+            selectedFile.name,
+            selectedFile.size,
+            selectedFile.type,
+          );
+          fileId = id;
+          await apiUploadSubmissionToS3(uploadUrl, selectedFile);
+        } catch (err) {
+          if (fileId) await apiDeleteSubmissionFileRecord(fileId).catch(() => {});
+          throw err;
+        }
+      }
+
+      // URL 모드로 전환했을 때 기존 파일 삭제
+      if (slidesMode === 'url' && slidesFile) {
+        await apiDeleteSubmissionFile(slidesFile.id).catch(() => {});
+      }
+
+      // 상태 갱신
+      const [updated, updatedFile] = await Promise.all([
+        apiFetchSubmission(team.id),
+        apiFetchSubmissionFile(team.id),
+      ]);
       setSubmission(updated);
+      setSlidesFile(updatedFile);
+      setSelectedFile(null);
       setIsEditing(false);
     } catch {
       console.error('제출 실패');
@@ -180,7 +388,12 @@ export default function Submit() {
                 <p className="text-xs mt-0.5 text-green-600">{submission!.submittedAt} 제출됨</p>
               </div>
             </div>
-            <SubmissionReadOnly submission={submission!} />
+            <SubmissionReadOnly
+              submission={submission!}
+              slidesFile={slidesFile}
+              onDownload={handleDownload}
+              downloadingFileId={downloadingFileId}
+            />
             <div className="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-xl p-4 text-sm text-amber-800">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
               <p>팀장만 제출 내용을 수정할 수 있습니다.</p>
@@ -214,9 +427,96 @@ export default function Submit() {
     );
   }
 
+  const slidesFieldEditing = (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="block text-xs font-medium text-gray-600">
+          발표 자료 <span className="text-red-400">*</span>
+        </label>
+        <SlidesModeToggle mode={slidesMode} onChange={(m) => {
+          setSlidesMode(m);
+          setSlidesError(null);
+          setFileError(null);
+          setSelectedFile(null);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }} />
+      </div>
+
+      {slidesMode === 'url' ? (
+        <>
+          <input
+            type="url"
+            placeholder="https://slides.example.com/your-presentation"
+            value={slides}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSlides(value);
+              setSlidesError(getUrlError(value, '발표 자료 URL'));
+            }}
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30 placeholder-gray-300"
+          />
+          {slidesError && <p className="mt-1 text-xs text-red-600">{slidesError}</p>}
+        </>
+      ) : (
+        <div>
+          {selectedFile ? (
+            <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50">
+              <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
+              <span className="text-xs text-gray-700 flex-1 min-w-0 truncate">{selectedFile.name}</span>
+              <span className="text-xs text-gray-400 shrink-0">{formatSize(selectedFile.size)}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedFile(null);
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }}
+                className="text-gray-400 hover:text-gray-600 shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : slidesFile && !selectedFile ? (
+            <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50">
+              <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
+              <span className="text-xs text-gray-700 flex-1 min-w-0 truncate">{slidesFile.fileName}</span>
+              <span className="text-xs text-gray-400 shrink-0">{formatSize(slidesFile.fileSize)}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (fileInputRef.current) fileInputRef.current.click();
+                }}
+                className="text-xs text-[#80766b] hover:underline shrink-0"
+              >
+                변경
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full flex flex-col items-center gap-1.5 px-3 py-4 border border-dashed border-gray-300 rounded-lg hover:border-[#80766b]/50 hover:bg-gray-50 transition-colors"
+            >
+              <Paperclip className="w-4 h-4 text-gray-400" />
+              <span className="text-xs text-gray-500">파일 선택 (최대 20MB)</span>
+              <span className="text-[10px] text-gray-400">PDF, PPT, PPTX, DOCX, ZIP 등</span>
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_ATTR}
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          {fileError && <p className="mt-1 text-xs text-red-600">{fileError}</p>}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <ParticipantLayout>
-      {/* ── 현재 제출 상태 ── */}
+      {/* 현재 제출 상태 */}
       <div
         className={`flex items-center gap-4 rounded-xl border px-5 py-4 mb-6 ${
           submitted ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-200'
@@ -237,7 +537,7 @@ export default function Submit() {
         </div>
       </div>
 
-      {/* ── 제출 완료 상태 ── */}
+      {/* 제출 완료 상태 */}
       {submitted ? (
         isEditing ? (
           <>
@@ -245,7 +545,7 @@ export default function Submit() {
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
               <ul className="space-y-1 text-xs leading-relaxed">
                 <li>• GitHub 저장소는 <strong>public</strong>으로 설정해주세요.</li>
-                <li>• 발표 자료는 심사위원이 접근 가능한 링크여야 합니다.</li>
+                <li>• 발표 자료는 심사위원이 접근 가능한 링크 또는 파일이어야 합니다.</li>
                 <li>• 제출 마감 이후 접수된 결과물은 심사에서 제외될 수 있습니다.</li>
               </ul>
             </div>
@@ -268,23 +568,7 @@ export default function Submit() {
                   />
                   {githubError && <p className="mt-1 text-xs text-red-600">{githubError}</p>}
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                    발표 자료 URL <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://slides.example.com/your-presentation"
-                    value={slides}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setSlides(value);
-                      setSlidesError(getUrlError(value, '발표 자료 URL'));
-                    }}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30 placeholder-gray-300"
-                  />
-                  {slidesError && <p className="mt-1 text-xs text-red-600">{slidesError}</p>}
-                </div>
+                {slidesFieldEditing}
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">
                     프로젝트 설명 <span className="text-red-400">*</span>
@@ -317,7 +601,12 @@ export default function Submit() {
           </>
         ) : (
           <>
-            <SubmissionReadOnly submission={submission!} />
+            <SubmissionReadOnly
+              submission={submission!}
+              slidesFile={slidesFile}
+              onDownload={handleDownload}
+              downloadingFileId={downloadingFileId}
+            />
             {submissionOpen ? (
               <div className="flex justify-end mb-4">
                 <button
@@ -342,18 +631,18 @@ export default function Submit() {
         )
       ) : (
         <>
-          {/* ── 주의사항 ── */}
+          {/* 주의사항 */}
           <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5 text-sm text-blue-800">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
             <ul className="space-y-1 text-xs leading-relaxed">
               <li>• GitHub 저장소는 <strong>public</strong>으로 설정해주세요.</li>
-              <li>• 발표 자료는 심사위원이 접근 가능한 링크여야 합니다.</li>
+              <li>• 발표 자료는 심사위원이 접근 가능한 링크 또는 파일이어야 합니다.</li>
               <li>• 제출 후에도 팀장이 직접 수정할 수 있습니다.</li>
               <li>• 제출 마감 이후 접수된 결과물은 심사에서 제외될 수 있습니다.</li>
             </ul>
           </div>
 
-          {/* ── 제출 폼 ── */}
+          {/* 제출 폼 */}
           <Card title="결과물 제출">
             <div className="space-y-4">
               <div>
@@ -373,23 +662,7 @@ export default function Submit() {
                 />
                 {githubError && <p className="mt-1 text-xs text-red-600">{githubError}</p>}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  발표 자료 URL <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://slides.example.com/your-presentation"
-                  value={slides}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSlides(value);
-                    setSlidesError(getUrlError(value, '발표 자료 URL'));
-                  }}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#80766b]/30 placeholder-gray-300"
-                />
-                {slidesError && <p className="mt-1 text-xs text-red-600">{slidesError}</p>}
-              </div>
+              {slidesFieldEditing}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
                   프로젝트 설명 <span className="text-red-400">*</span>
