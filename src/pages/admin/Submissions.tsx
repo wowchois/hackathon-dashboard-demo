@@ -186,7 +186,7 @@ export default function Submissions() {
                     {/* Description */}
                     {detail.description && (
                       <div className="pt-1">
-                        <p className={`text-xs text-gray-500 leading-relaxed whitespace-pre-wrap break-words ${expandedDesc.has(team.id) ? '' : 'line-clamp-1'}`}>
+                        <p className={`text-xs text-gray-500 leading-relaxed whitespace-pre-wrap break-words ${expandedDesc.has(team.id) ? 'max-h-48 overflow-y-auto' : 'line-clamp-1'}`}>
                           {detail.description}
                         </p>
                         <button
