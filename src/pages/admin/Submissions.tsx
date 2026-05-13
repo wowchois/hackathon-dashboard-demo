@@ -186,7 +186,7 @@ export default function Submissions() {
                     {/* Description */}
                     {detail.description && (
                       <div className="pt-1">
-                        <p className={`text-xs text-gray-500 leading-relaxed whitespace-pre-wrap break-words ${expandedDesc.has(team.id) ? '' : 'line-clamp-2'}`}>
+                        <p className={`text-xs text-gray-500 leading-relaxed whitespace-pre-wrap break-words ${expandedDesc.has(team.id) ? '' : 'line-clamp-1'}`}>
                           {detail.description}
                         </p>
                         <button
@@ -208,11 +208,21 @@ export default function Submissions() {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>
-                    {submitted ? '제출 데이터를 불러오는 중...' : '아직 제출하지 않은 팀입니다.'}
-                  </span>
+                <div className="space-y-3">
+                  {/* 제출 카드의 clock 행과 동일한 구조 */}
+                  <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{submitted ? '제출 데이터를 불러오는 중...' : '아직 제출하지 않은 팀입니다.'}</span>
+                  </div>
+                  {/* 제출 카드의 링크+설명 영역과 동일한 구조 */}
+                  <div className="border-t border-gray-100 pt-3 space-y-2">
+                    <div className="h-7 rounded-lg bg-gray-50" />
+                    <div className="h-7 rounded-lg bg-gray-50" />
+                    <div className="pt-1 space-y-1">
+                      <div className="h-3.5 rounded bg-gray-50 w-4/5" />
+                      <div className="h-3.5 rounded bg-gray-50 w-10 mt-1" />
+                    </div>
+                  </div>
                 </div>
               )}
             </Card>
