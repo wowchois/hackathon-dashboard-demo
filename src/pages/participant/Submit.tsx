@@ -232,6 +232,7 @@ export default function Submit() {
         if (sub) {
           setGithub(sub.githubUrl);
           setSlides(sub.slidesUrl);
+          setDescription(sub.description);
           setSlidesMode(file ? 'file' : 'url');
           setGithubError(null);
           setSlidesError(null);
@@ -248,6 +249,7 @@ export default function Submit() {
     if (submission) {
       setGithub(submission.githubUrl);
       setSlides(submission.slidesUrl);
+      setDescription(submission.description);
       setSlidesMode(slidesFile ? 'file' : 'url');
       setSelectedFile(null);
       setGithubError(null);
