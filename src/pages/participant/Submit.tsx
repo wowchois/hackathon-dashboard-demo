@@ -159,7 +159,7 @@ function SubmissionReadOnly({
         </div>
         <div>
           <p className="text-xs text-gray-400 mb-1">프로젝트 설명</p>
-          <p className="text-sm text-gray-700 leading-relaxed">{submission.description}</p>
+          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{submission.description}</p>
         </div>
       </div>
     </Card>
