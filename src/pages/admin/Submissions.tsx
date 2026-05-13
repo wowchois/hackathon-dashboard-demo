@@ -10,7 +10,7 @@ import {
   apiGetSubmissionDownloadUrl,
 } from '../../api/submissionFiles';
 import type { SubmissionFile } from '../../api/submissionFiles';
-import { FileCheck, ExternalLink, Clock, AlertCircle, FileText, Download, Loader2 } from 'lucide-react';
+import { FileCheck, ExternalLink, Clock, AlertCircle, FileText, Download, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 
 function getSafeHttpsHref(value: string): string | null {
   try {
@@ -32,6 +32,7 @@ export default function Submissions() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [submissionFiles, setSubmissionFiles] = useState<SubmissionFile[]>([]);
   const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
+  const [expandedDesc, setExpandedDesc] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     apiFetchAllSubmissions().then(setSubmissions).catch(console.error);
@@ -102,7 +103,7 @@ export default function Submissions() {
       </div>
 
       {/* 팀별 카드 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
         {teams.map((team) => {
           const submitted = team.submitStatus === 'submitted';
           const detail = submissionMap[team.id];
@@ -184,9 +185,25 @@ export default function Submissions() {
 
                     {/* Description */}
                     {detail.description && (
-                      <p className="text-xs text-gray-500 pt-1 leading-relaxed line-clamp-2">
-                        {detail.description}
-                      </p>
+                      <div className="pt-1">
+                        <p className={`text-xs text-gray-500 leading-relaxed whitespace-pre-wrap break-words ${expandedDesc.has(team.id) ? '' : 'line-clamp-2'}`}>
+                          {detail.description}
+                        </p>
+                        <button
+                          onClick={() => setExpandedDesc((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(team.id)) next.delete(team.id); else next.add(team.id);
+                            return next;
+                          })}
+                          className="flex items-center gap-0.5 mt-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          {expandedDesc.has(team.id) ? (
+                            <><ChevronUp className="w-3 h-3" />접기</>
+                          ) : (
+                            <><ChevronDown className="w-3 h-3" />더 보기</>
+                          )}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
